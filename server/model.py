@@ -50,7 +50,20 @@ class Event(db.Model, SerializerMixin):
     resources = db.relationship('Rescource', backref='event')
     expenses = db.relationship('Expense', backref='event')
 
-    budget = db.relationship('Budget', backref='event', lazy="select", uselist=False)  # one to one
+    budget = db.relationship('Budget', backref='event', lazy="select", uselist=False)  #
+    
+    def serialize(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'date': self.date.strftime('%Y-%m-%d'),  # Assuming self.date is a datetime object
+            'time': self.time.strftime('%H:%M:%S'),  # Assuming self.time is a time object
+            'location': self.location,
+            'description': self.description,
+            'category': self.category,
+            'organizer_id': self.organizer_id,
+    }
+
 
 
 class Task(db.Model, SerializerMixin):
