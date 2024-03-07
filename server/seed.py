@@ -1,16 +1,19 @@
 from datetime import datetime, time
 from model import User, Event, Task, Budget, Rescource, Expense, Task_Assignment
-from config import db,app
+from config import db,app,bcrypt
 
 with app.app_context():  # Create an application context
-    users = User.query.all()
-    for user in users:
-        db.session.delete(user)
-    db.session.commit()
+    # User.query.delete()
+    # for user in users:
+    #     db.session.delete(user)
+    # db.session.commit()
+    password_hash = bcrypt.generate_password_hash('mypassword').decode('utf-8')
+    password_hash2 = bcrypt.generate_password_hash('password').decode('utf-8')
 
-    user1 = User(username='John', email='john@example.com', first_name='Mary', last_name='Doe')
-    user2 = User(username='Jane', email='jane@example.com', first_name='James', last_name='Smith')
-
+    user1 = User(username='John', email='john@example.com', first_name='Mary', last_name='Doe',_password_hash=password_hash)
+    # user1.
+    user2 = User(username='Jane', email='jane@example.com', first_name='James', last_name='Smith',_password_hash=password_hash2)
+    # user1.
     db.session.add_all([user1, user2])
     db.session.commit()
 
