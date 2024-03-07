@@ -2,6 +2,23 @@ from config import app, db, api
 from model import User,Event
 from flask_restful import Resource
 from flask import request, session,jsonify,make_response
+from flask_jwt_extended import jwt_manager, create_access_token
+
+
+class UserResource(Resource):  # Class names should be capitalized
+    def post(self):
+        username = request.json.get('username')
+        password = request.json.get('password')
+        user = User.query.filter_by(username=username).first()
+        if not username:
+            return jsonify({"message": "Missing username parameter"}), 400
+        if not user or not user.authenticate(password):  # Check if user is None or authentication fails
+            return {"message": "Invalid username or password"}, 401
+        access_token = create_access_token(identity=user.id)
+        return {'token': access_token}
+
+
+
 
 class Events(Resource):
     def get(self):
@@ -40,7 +57,10 @@ class Events(Resource):
         db.session.commit()
         
 api.add_resource(Events, '/events')
+api.add_resource(UserResource, '/login')
 
+
+ 
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)   
