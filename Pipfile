@@ -12,6 +12,8 @@ flask-cors = "*"
 sqlalchemy = "*"
 sqlalchemy-serializer = "*"
 werkzeug = "*"
+flask-jwt-extended = "*"
+flask-bcrypt = "*"
 
 [dev-packages]
 
