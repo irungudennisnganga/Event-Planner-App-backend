@@ -51,7 +51,16 @@ class User(db.Model, SerializerMixin):
     task = db.relationship('Task', backref='user')
     expenses = db.relationship('Expense', backref='user')
     rescources = db.relationship('Rescource', backref='user') 
-
+    
+    def serialize(self):
+        return {
+            'id': self.id,
+            'first_name':self.first_name,
+            'last_name':self.last_name,
+            'username':self.username,
+            'email': self.email
+            
+    }
     @validates('email')
     def validate_email(self, key, value):
         if '@' not in value and '.com' not in value:
