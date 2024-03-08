@@ -15,12 +15,24 @@ class Rescource(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
+    organizer_id = db.Column(db.Integer)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
 
     __table_args__ = (UniqueConstraint('name', name='unique_name'),)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
+    
+    def serialize(self):
+        return {
+            'id': self.id,
+            'name':self.name,
+            'quantity':self.quantity,
+            'user_id':self.user_id,
+            'organizer_id': self.organizer_id,
+            'event_id': self.event_id,
+            
+    }
     
 class User(db.Model, SerializerMixin):
     __tablename__ = 'users'
@@ -83,18 +95,19 @@ class Event(db.Model, SerializerMixin):
     resources = db.relationship('Rescource', backref='event')
     expenses = db.relationship('Expense', backref='event')
 
-    budget = db.relationship('Budget', backref='event', lazy="select", uselist=False)  #
+    budget = db.relationship('Budget', backref='event', lazy="select", uselist=False)  
     
     def serialize(self):
         return {
             'id': self.id,
             'title': self.title,
-            'date': self.date.strftime('%Y-%m-%d'),  # Assuming self.date is a datetime object
-            'time': self.time.strftime('%H:%M:%S'),  # Assuming self.time is a time object
+            'date': self.date.strftime('%Y-%m-%d'),  
+            'time': self.time.strftime('%H:%M:%S'),
             'location': self.location,
             'description': self.description,
             'category': self.category,
             'organizer_id': self.organizer_id,
+            # 'task':self.task
     }
 
 
@@ -106,18 +119,41 @@ class Task(db.Model, SerializerMixin):
     title = db.Column(db.String)
     deadline = db.Column(db.Time)
     completed = db.Column(db.Boolean)
+    organizer_id = db.Column(db.Integer)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     event_id = db.Column(db.Integer, db.ForeignKey('events.id'))
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
     
     task_assignment = db.relationship('Task_Assignment', backref='task')
+    
+    def serialize(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'deadline': self.date.strftime('%Y-%m-%d'),  # Assuming self.date is a datetime object
+            'completed': self.completed,
+            'user_id': self.user_id,
+            'event_id': self.event_id,
+            'organizer_id':self.organizer_id
+            
+    }
 class Budget(db.Model,SerializerMixin):
     __tablename__ ='budgets'   
     
     id = db.Column(db.Integer, primary_key=True)
     event_id = db.Column(db.Integer, db.ForeignKey('events.id'))
+    organizer_id = db.Column(db.Integer)
     total = db.Column(db.Integer)
+    
+    def serialize(self):
+        return {
+            'id': self.id,
+            'organizer_id': self.organizer_id,
+            'event_id': self.event_id,
+            'total':self.total
+            
+    }
     
 
 class Expense(db.Model, SerializerMixin):
@@ -128,8 +164,21 @@ class Expense(db.Model, SerializerMixin):
     amount = db.Column(db.Integer)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     event_id =db.Column(db.Integer, db.ForeignKey('events.id'))
+    organizer_id = db.Column(db.Integer)
+
     created_at =db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
+    
+    def serialize(self):
+        return {
+            'id': self.id,
+            'description':self.description,
+            'amount':self.amount,
+            'user_id':self.user_id,
+            'organizer_id': self.organizer_id,
+            'event_id': self.event_id,
+            
+    }
 
 class Task_Assignment(db.Model, SerializerMixin):
     __tablename__ ='task_assignments'
@@ -138,7 +187,20 @@ class Task_Assignment(db.Model, SerializerMixin):
     task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'))
     user_id = db.Column(db.Integer , db.ForeignKey('users.id'))
     deadline = db.Column(db.Time)
+    organizer_id = db.Column(db.Integer)
+
     completed = db.Column(db.Boolean)
+    
+    def serialize(self):
+        return {
+            'id': self.id,
+            'task_id':self.task_id,
+            'user_id':self.user_id,
+            'organizer_id': self.organizer_id,
+            'deadline': self.deadline,
+            'completed':self.completed
+            
+    }
     
 
 

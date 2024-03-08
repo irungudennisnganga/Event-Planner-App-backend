@@ -11,33 +11,62 @@ class UserResource(Resource):  # Class names should be capitalized
         password = request.json.get('password')
         user = User.query.filter_by(username=username).first()
         if not username:
-            return jsonify({"message": "Missing username parameter"}), 400
+            return make_response(jsonify({"message": "Missing username parameter"}), 400)
         if not user or not user.authenticate(password):  # Check if user is None or authentication fails
             return {"message": "Invalid username or password"}, 401
         access_token = create_access_token(identity=user.id)
-        return {'token': access_token}
+        return make_response(jsonify({'token': access_token}))
 
-   
-class AddUser(Resource):
+
+class SignupResource(Resource):
     def post(self):
-        first_name =request.json.get('first_name')
-        last_name =request.json.get('last_name')
-        username =request.json.get('username')
-        email =request.json.get('email')
-        password =request.json.get('password')
-
-        if first_name is None or last_name is None or username is None or email is None or password is None:
-            return make_response(jsonify({'errors': ['Missing required data']}), 400)
+        data = request.json
+        first_name = data.get('first_name')
+        last_name = data.get('last_name')
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
         
-        new_user =User(
+        if not all([first_name, last_name, username, email, password]):
+            return make_response(jsonify({'errors': ['Missing required data']}), 400)
+
+        if User.query.filter_by(username=username).first():
+            return make_response(jsonify({'message': 'User already exists'}), 400)
+
+        new_user = User(
             first_name=first_name,
             last_name=last_name,
             username=username,
             email=email,
-            _password_hash=bcrypt.generate_password_hash(password)
+            _password_hash=bcrypt.generate_password_hash(password).decode('utf-8')
         )
         db.session.add(new_user)
         db.session.commit()
+
+        
+        return make_response(jsonify({'message': 'Sign up successful'}), 200)
+    
+  
+class DeleteUser(Resource):
+    def delete(self):
+        data = request.json
+        username = data.get('username')
+        user=User.query.filter_by(username=username).first()
+        
+        if not user :
+            return make_response(jsonify({'message': 'No user found'}), 400)
+        
+        db.session.delete(user)
+        db.session.commit()
+        
+        
+        
+        return make_response(jsonify({"message":"Deleted successfuly"}), 200)
+        
+
+      
+        
+       
 
 
 class Events(Resource):
@@ -78,7 +107,8 @@ class Events(Resource):
         
 api.add_resource(Events, '/events')
 api.add_resource(UserResource, '/login')
-api.add_resource(AddUser, '/add_user')
+api.add_resource(SignupResource, '/add_user')
+api.add_resource(DeleteUser, '/del_user')
 
 
  
