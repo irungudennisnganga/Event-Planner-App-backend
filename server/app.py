@@ -1,9 +1,9 @@
 from config import app, db, api,bcrypt
-from model import User,Event
+from model import User,Event,Rescource as ResourceModel 
 from flask_restful import Resource
 from flask import request, session,jsonify,make_response
 from flask_jwt_extended import jwt_manager, create_access_token
-
+from sqlalchemy.exc import IntegrityError
 
 class UserResource(Resource):  # Class names should be capitalized
     def post(self):
@@ -16,7 +16,6 @@ class UserResource(Resource):  # Class names should be capitalized
             return {"message": "Invalid username or password"}, 401
         access_token = create_access_token(identity=user.id)
         return make_response(jsonify({'token': access_token}))
-
 
 class SignupResource(Resource):
     def post(self):
@@ -43,10 +42,9 @@ class SignupResource(Resource):
         db.session.add(new_user)
         db.session.commit()
 
-        
         return make_response(jsonify({'message': 'Sign up successful'}), 200)
     
-  
+    # change username to be enterd through routes
 class DeleteUser(Resource):
     def delete(self):
         data = request.json
@@ -59,16 +57,8 @@ class DeleteUser(Resource):
         db.session.delete(user)
         db.session.commit()
         
-        
-        
         return make_response(jsonify({"message":"Deleted successfuly"}), 200)
         
-
-      
-        
-       
-
-
 class Events(Resource):
     def get(self):
         events = [event.serialize() for event in Event.query.all()]
@@ -104,11 +94,72 @@ class Events(Resource):
         
         db.session.add(new_event)
         db.session.commit()
+   
+class AllResource(Resource):
+    def get(self):
+        resources = [resource.serialize() for resource in ResourceModel.query.all()]  
+        return make_response(jsonify(resources))
+    
+    def post(self):
+        name = request.get_json()['name'] 
+        quantity = request.get_json()['quantity'] 
+        organizer_id = request.get_json()['organizer_id'] 
+        user_id = request.get_json()['user_id'] 
+        event_id = request.get_json()['event_id'] 
         
+        if name is None or quantity is None or user_id is None or event_id is None or organizer_id is None :
+            return make_response(jsonify({'errors': ['Missing required data']}), 400)
+        
+        new_resource =ResourceModel(
+            name=name,
+            quantity=quantity,
+            organizer_id=organizer_id,
+            user_id=user_id,
+            event_id=event_id
+        )
+        db.session.add(new_resource)
+        db.session.commit()
+        
+class UpdateResource(Resource):
+        def patch(self,id):
+            data = request.get_json()
+            resource = ResourceModel.query.filter_by(id=id).first()
+            if not resource:
+                return make_response(jsonify({'message': 'Resource not found'}), 404)
+
+
+            if 'name' in data:
+                resource.name = data['name']
+            if 'quantity' in data:
+                resource.quantity = data['quantity']
+            if 'organizer_id' in data:
+                resource.organizer_id = data['organizer_id']
+            if 'user_id' in data:
+                resource.user_id = data['user_id']
+            if 'event_id' in data:
+                resource.event_id = data['event_id']
+
+            db.session.commit()
+            
+            return make_response(jsonify({'message': 'Resource updated successfully'}), 200)   
+        
+        def delete(self,id):
+            resource = ResourceModel.query.filter_by(id=id).first()
+
+            db.session.delete(resource)
+            db.session.commit()
+            
+            return make_response(jsonify({'message': 'Resource deleted successfully'}), 200)
+
+
+            
+         
 api.add_resource(Events, '/events')
 api.add_resource(UserResource, '/login')
 api.add_resource(SignupResource, '/add_user')
 api.add_resource(DeleteUser, '/del_user')
+api.add_resource(AllResource, '/resource')
+api.add_resource(UpdateResource, '/resource/<int:id>')
 
 
  
