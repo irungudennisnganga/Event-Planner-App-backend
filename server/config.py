@@ -6,7 +6,6 @@ from flask_sqlalchemy import SQLAlchemy # import sqlalchemy
 from flask_cors import CORS # import cors
 from flask_jwt_extended import JWTManager
 from flask_bcrypt import Bcrypt
-from app import CheckSession  # Import the CheckSession class from resources module
 
 
 app = Flask(__name__) #instanciate a flask application 
@@ -15,7 +14,6 @@ app.secret_key = b'\xc2A\x1c\xc6\xc5QvJ?ZH$\x13\\4\xb0'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = 'ce81d8454bd966ba09bbbdf723f632fd'
-app.config(CheckSession, '/check_session', endpoint='check_session')
 
 # app.json.compact = False
 jwt  = JWTManager(app)
