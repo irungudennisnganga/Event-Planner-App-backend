@@ -5,7 +5,7 @@ from model import User,Event,Rescource as ResourceModel ,Budget, Task, Task_Assi
 from flask_restful import Resource
 from flask import request,jsonify,make_response
 from flask_jwt_extended import jwt_manager, create_access_token, get_jwt_identity, jwt_required,unset_jwt_cookies
-from flask import session
+
 
 # from sqlalchemy.exc import IntegrityError
 configuration = sib_api_v3_sdk.Configuration()
