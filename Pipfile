@@ -15,6 +15,10 @@ werkzeug = "*"
 flask-jwt-extended = "*"
 flask-bcrypt = "*"
 
+python-dotenv = "*"
+secure-smtplib = "*"
+sib-api-v3-sdk = "*"
+
 [dev-packages]
 
 [requires]

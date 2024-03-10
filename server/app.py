@@ -1,20 +1,55 @@
 from config import app, db, api,bcrypt
-from model import User,Event,Rescource as ResourceModel 
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
+from model import User,Event,Rescource as ResourceModel ,Budget, Task, Task_Assignment, Expense
 from flask_restful import Resource
-from flask import request, session,jsonify,make_response
+from flask import request,jsonify,make_response
 from flask_jwt_extended import jwt_manager, create_access_token
-from sqlalchemy.exc import IntegrityError
+# from sqlalchemy.exc import IntegrityError
+configuration = sib_api_v3_sdk.Configuration()
 
-class UserResource(Resource):  # Class names should be capitalized
+# Replace "<your brevo api key here>" with your actual SendinBlue API key
+configuration.api_key['api-key'] = "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"
+
+# Initialize the SendinBlue API instance
+api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
+
+def send_email(subject, html, to_address=None, receiver_username=None):
+    sender = {"name": "Event Time", "email": "event_time@gmail.com"}
+    html_content = html
+
+    # Define the recipient(s)
+    if to_address:
+        to = [{"email": to_address, "name": receiver_username}]
+    else:
+        to = [{"email": "eventtime@gmail.com", "name": "Event Time"}]
+
+    # Create a SendSmtpEmail object
+    send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(to=to, html_content=html_content, sender=sender, subject=subject)
+
+    try:
+        # Send the email
+        api_response = api_instance.send_transac_email(send_smtp_email)
+        return {"message": "Email sent successfully!"}
+    except ApiException as e:
+        return {"error": f"Exception when calling SMTPApi->send_transac_email: {e}"}
+
+class UserResource(Resource):  
     def post(self):
         username = request.json.get('username')
         password = request.json.get('password')
         user = User.query.filter_by(username=username).first()
         if not username:
             return make_response(jsonify({"message": "Missing username parameter"}), 400)
-        if not user or not user.authenticate(password):  # Check if user is None or authentication fails
+        if not user or not user.authenticate(password): 
             return {"message": "Invalid username or password"}, 401
         access_token = create_access_token(identity=user.id)
+        
+        subject = "Welcome to Event Time!"
+        html = "<p>Thank you for signing in!.</p>"
+        email_response = send_email(subject, html, user.email)
+
+        return make_response(jsonify({'message': 'Sign up successful', 'email_response': email_response}), 200)
         return make_response(jsonify({'token': access_token}))
 
 class SignupResource(Resource):
@@ -42,22 +77,38 @@ class SignupResource(Resource):
         db.session.add(new_user)
         db.session.commit()
 
-        return make_response(jsonify({'message': 'Sign up successful'}), 200)
-    
-    # change username to be enterd through routes
+        # Sending welcome email to the newly signed-up user
+        subject = "Welcome to Event Time!"
+        html = "<p>Thank you for signing up!. Sign up to continue...</p>"
+        email_response = send_email(subject, html, email)
+
+        return make_response(jsonify({'message': 'Sign up successful', 'email_response': email_response}), 200)
+
+#  add Logout method
+
+# add checksession method  
+ 
 class DeleteUser(Resource):
-    def delete(self):
-        data = request.json
-        username = data.get('username')
-        user=User.query.filter_by(username=username).first()
+    def delete(self,id):
+        # data = request.json
+        # username = data.get('username')
+        user=User.query.filter_by(id=id).first()
         
         if not user :
             return make_response(jsonify({'message': 'No user found'}), 400)
         
+        subject = "Exited Event Time!"
+        html = "<p>Thank you for using our services. User deleted successfuly</p>"
+        email_response = send_email(subject, html, user.email)
+
+        # return make_response(jsonify(), 200)
         db.session.delete(user)
         db.session.commit()
         
-        return make_response(jsonify({"message":"Deleted successfuly"}), 200)
+        return make_response(jsonify({"message":"Deleted successfuly"},{'message': 'User deletion successful', 'email_response': email_response}), 200)
+    
+    
+    # add update feature for users to update userdetails
         
 class Events(Resource):
     def get(self):
@@ -150,16 +201,28 @@ class UpdateResource(Resource):
             db.session.commit()
             
             return make_response(jsonify({'message': 'Resource deleted successfully'}), 200)
+        
 
+# add Budget Route with GET, POST, DELETE, PATCH
 
+# add Task Routes with GET, POST, DELETE , PATCH
+
+# add Task_management Route with GET, POST, DELETE, PATCH
+
+# add Expense Route withe GET, POST, DELETE, PATCH
             
-         
-api.add_resource(Events, '/events')
+
+
+
+
+
 api.add_resource(UserResource, '/login')
-api.add_resource(SignupResource, '/add_user')
-api.add_resource(DeleteUser, '/del_user')
+api.add_resource(SignupResource, '/sign_up')
+api.add_resource(Events, '/events')
+api.add_resource(DeleteUser, '/del_user/<int:id>')
 api.add_resource(AllResource, '/resource')
 api.add_resource(UpdateResource, '/resource/<int:id>')
+
 
 
  
