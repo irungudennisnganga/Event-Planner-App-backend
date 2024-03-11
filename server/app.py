@@ -11,7 +11,7 @@ from flask_jwt_extended import jwt_manager, create_access_token, get_jwt_identit
 configuration = sib_api_v3_sdk.Configuration()
 
 # Replace "<your brevo api key here>" with your actual SendinBlue API key
-configuration.api_key['api-key'] = "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"
+configuration.api_key['api-key'] = "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"
 
 # Initialize the SendinBlue API instance
 api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
