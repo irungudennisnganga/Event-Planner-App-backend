@@ -1,9 +1,10 @@
 from config import app, db, api,bcrypt
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
+# from __future__ import print_function
 from model import User,Event,Rescource as ResourceModel ,Budget, Task, Task_Assignment, Expense
 from flask_restful import Resource
-from flask import request,jsonify,make_response
+from flask import request,jsonify,make_response,session
 from flask_jwt_extended import jwt_manager, create_access_token, get_jwt_identity, jwt_required,unset_jwt_cookies
 
 
@@ -11,7 +12,7 @@ from flask_jwt_extended import jwt_manager, create_access_token, get_jwt_identit
 configuration = sib_api_v3_sdk.Configuration()
 
 # Replace "<your brevo api key here>" with your actual SendinBlue API key
-configuration.api_key['api-key'] = "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"
+configuration.api_key['api-key'] = "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"
 
 # Initialize the SendinBlue API instance
 api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
@@ -51,8 +52,8 @@ class UserResource(Resource):
         html = "<p>Thank you for signing in!.</p>"
         email_response = send_email(subject, html, user.email)
 
-        return make_response(jsonify({'message': 'Sign up successful', 'email_response': email_response}), 200)
-        return make_response(jsonify({'token': access_token}))
+        return make_response(jsonify({'message': 'Sign up successful', 'email_response': email_response},{'token': access_token}), 200)
+        return make_response(jsonify())
 
 class SignupResource(Resource):
     def post(self):
@@ -87,6 +88,22 @@ class SignupResource(Resource):
         return make_response(jsonify({'message': 'Sign up successful', 'email_response': email_response}), 200)
 
 #  add Logout method
+class CheckSession(Resource):
+    def get(self):
+        if 'user_id' in session:
+            user_id = session['user_id']
+            return {'message': 'Session is active', 'user_id': user_id}, 200
+        else:
+            return {'message': 'Session is not active'}, 401
+        
+class LogoutResource(Resource):
+    @jwt_required()  
+    def post(self):
+        user = get_jwt_identity()
+
+        response = make_response(jsonify({'message': 'Logout successful'}), 200)
+        unset_jwt_cookies(user)
+        return response
 
 # add checksession method  
  
@@ -204,22 +221,6 @@ class UpdateResource(Resource):
             
             return make_response(jsonify({'message': 'Resource deleted successfully'}), 200)
         
-class CheckSession(Resource):
-    def get(self):
-        if 'user_id' in session:
-            user_id = session['user_id']
-            return {'message': 'Session is active', 'user_id': user_id}, 200
-        else:
-            return {'message': 'Session is not active'}, 401
-        
-class LogoutResource(Resource):
-    @jwt_required()  
-    def post(self):
-        user = get_jwt_identity()
-
-        response = make_response(jsonify({'message': 'Logout successful'}), 200)
-        unset_jwt_cookies(response)
-        return response
 
 
 # add Budget Route with GET, POST, DELETE, PATCH
