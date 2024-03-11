@@ -4,7 +4,9 @@ from sib_api_v3_sdk.rest import ApiException
 from model import User,Event,Rescource as ResourceModel ,Budget, Task, Task_Assignment, Expense
 from flask_restful import Resource
 from flask import request,jsonify,make_response
-from flask_jwt_extended import jwt_manager, create_access_token
+from flask_jwt_extended import jwt_manager, create_access_token, get_jwt_identity, jwt_required,unset_jwt_cookies
+
+
 # from sqlalchemy.exc import IntegrityError
 configuration = sib_api_v3_sdk.Configuration()
 
@@ -202,6 +204,23 @@ class UpdateResource(Resource):
             
             return make_response(jsonify({'message': 'Resource deleted successfully'}), 200)
         
+class CheckSession(Resource):
+    def get(self):
+        if 'user_id' in session:
+            user_id = session['user_id']
+            return {'message': 'Session is active', 'user_id': user_id}, 200
+        else:
+            return {'message': 'Session is not active'}, 401
+        
+class LogoutResource(Resource):
+    @jwt_required()  
+    def post(self):
+        user = get_jwt_identity()
+
+        response = make_response(jsonify({'message': 'Logout successful'}), 200)
+        unset_jwt_cookies(response)
+        return response
+
 
 # add Budget Route with GET, POST, DELETE, PATCH
 
@@ -215,13 +234,15 @@ class UpdateResource(Resource):
 
 
 
-
+api.add_resource(LogoutResource, '/logout')
 api.add_resource(UserResource, '/login')
 api.add_resource(SignupResource, '/sign_up')
 api.add_resource(Events, '/events')
 api.add_resource(DeleteUser, '/del_user/<int:id>')
 api.add_resource(AllResource, '/resource')
 api.add_resource(UpdateResource, '/resource/<int:id>')
+api.add_resource(CheckSession, '/check_session', endpoint='check_session')
+
 
 
 
