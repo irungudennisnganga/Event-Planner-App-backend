@@ -1,18 +1,20 @@
-from config import app, db, api,bcrypt
-from model import User,Event,Rescource as ResourceModel 
-from flask_restful import Resource
-from flask import request, session,jsonify,make_response
-from flask_jwt_extended import jwt_manager, create_access_token
-from sqlalchemy.exc import IntegrityError
+from flask import jsonify, request, make_response
+from flask_restful import Api, Resource
+from flask_jwt_extended import create_access_token  # Import create_access_token
+from model import Expense, Budget, User, Event, Resource as ResourceModel, db
+from config import app, bcrypt
 
-class UserResource(Resource):  # Class names should be capitalized
+api = Api(app)
+
+# Routes for handling user-related operations
+class UserResource(Resource):
     def post(self):
         username = request.json.get('username')
         password = request.json.get('password')
         user = User.query.filter_by(username=username).first()
         if not username:
             return make_response(jsonify({"message": "Missing username parameter"}), 400)
-        if not user or not user.authenticate(password):  # Check if user is None or authentication fails
+        if not user or not user.authenticate(password):
             return {"message": "Invalid username or password"}, 401
         access_token = create_access_token(identity=user.id)
         return make_response(jsonify({'token': access_token}))
@@ -44,126 +46,119 @@ class SignupResource(Resource):
 
         return make_response(jsonify({'message': 'Sign up successful'}), 200)
     
-    # change username to be enterd through routes
 class DeleteUser(Resource):
     def delete(self):
         data = request.json
         username = data.get('username')
-        user=User.query.filter_by(username=username).first()
+        user = User.query.filter_by(username=username).first()
         
-        if not user :
+        if not user:
             return make_response(jsonify({'message': 'No user found'}), 400)
         
         db.session.delete(user)
         db.session.commit()
         
-        return make_response(jsonify({"message":"Deleted successfuly"}), 200)
-        
+        return make_response(jsonify({"message": "Deleted successfully"}), 200)
+
+# Routes for handling expense-related operations
+class Expenses(Resource):
+    def get(self):
+        expenses = Expense.query.all()
+        return jsonify([expense.serialize() for expense in expenses])
+
+    def post(self):
+        data = request.json
+        if not data:
+            return jsonify({'message': 'No input data provided'}), 400
+
+        new_expense = Expense(
+            description=data.get('description'),
+            amount=data.get('amount'),
+            user_id=data.get('user_id'),
+            event_id=data.get('event_id'),
+            organizer_id=data.get('organizer_id')
+        )
+
+        db.session.add(new_expense)
+        db.session.commit()
+
+        return jsonify({'message': 'Expense created successfully', 'expense_id': new_expense.id}), 201
+
+# Routes for handling budget-related operations
+class Budgets(Resource):
+    def get(self):
+        budgets = Budget.query.all()
+        return jsonify([budget.serialize() for budget in budgets])
+
+    def post(self):
+        data = request.json
+        if not data:
+            return jsonify({'message': 'No input data provided'}), 400
+
+        new_budget = Budget(
+            total=data.get('total'),
+            event_id=data.get('event_id'),
+            organizer_id=data.get('organizer_id')
+        )
+
+        db.session.add(new_budget)
+        db.session.commit()
+
+        return jsonify({'message': 'Budget created successfully', 'budget_id': new_budget.id}), 201
+
+# Routes for handling event-related operations
 class Events(Resource):
     def get(self):
-        events = [event.serialize() for event in Event.query.all()]
-        
-        response = make_response(
-            jsonify(events),
-            200
-        )
-        
-        return response
-    
+        events = Event.query.all()
+        return jsonify([event.serialize() for event in events])
+
     def post(self):
-        title = request.get_json()['title'] 
-        date = request.get_json()['date'] 
-        time = request.get_json()['time'] 
-        location = request.get_json()['location'] 
-        description = request.get_json()['description'] 
-        category = request.get_json()['category'] 
-        organizer_id = request.get_json()['organizer_id'] 
-        
-        if time is None or title is None or date is None or location is None or description is None or category is None or organizer_id is None:
-            return make_response(jsonify({'errors': ['Missing required data']}), 400)
-        
+        data = request.json
+        if not data:
+            return jsonify({'message': 'No input data provided'}), 400
+
         new_event = Event(
-            title=title,
-            date=date,
-            time=time,
-            location=location,
-            description=description,
-            category=category,
-            organizer_id=organizer_id
+            title=data['title'],
+            date=data['date'],
+            time=data['time'],
+            location=data['location'],
+            description=data['description'],
+            category=data['category'],
+            organizer_id=data['organizer_id']
         )
-        
         db.session.add(new_event)
         db.session.commit()
-   
+        return jsonify({'message': 'Event created successfully', 'event_id': new_event.id}), 201
+
+# Routes for handling resource-related operations
 class AllResource(Resource):
     def get(self):
-        resources = [resource.serialize() for resource in ResourceModel.query.all()]  
-        return make_response(jsonify(resources))
-    
+        resources = ResourceModel.query.all()
+        return jsonify([resource.serialize() for resource in resources])
+
     def post(self):
-        name = request.get_json()['name'] 
-        quantity = request.get_json()['quantity'] 
-        organizer_id = request.get_json()['organizer_id'] 
-        user_id = request.get_json()['user_id'] 
-        event_id = request.get_json()['event_id'] 
-        
-        if name is None or quantity is None or user_id is None or event_id is None or organizer_id is None :
-            return make_response(jsonify({'errors': ['Missing required data']}), 400)
-        
-        new_resource =ResourceModel(
-            name=name,
-            quantity=quantity,
-            organizer_id=organizer_id,
-            user_id=user_id,
-            event_id=event_id
+        data = request.json
+        if not data:
+            return jsonify({'message': 'No input data provided'}), 400
+
+        new_resource = ResourceModel(
+            name=data['name'],
+            quantity=data['quantity'],
+            organizer_id=data['organizer_id'],
+            user_id=data['user_id'],
+            event_id=data['event_id']
         )
         db.session.add(new_resource)
         db.session.commit()
-        
-class UpdateResource(Resource):
-        def patch(self,id):
-            data = request.get_json()
-            resource = ResourceModel.query.filter_by(id=id).first()
-            if not resource:
-                return make_response(jsonify({'message': 'Resource not found'}), 404)
+        return jsonify({'message': 'Resource created successfully', 'resource_id': new_resource.id}), 201
 
-
-            if 'name' in data:
-                resource.name = data['name']
-            if 'quantity' in data:
-                resource.quantity = data['quantity']
-            if 'organizer_id' in data:
-                resource.organizer_id = data['organizer_id']
-            if 'user_id' in data:
-                resource.user_id = data['user_id']
-            if 'event_id' in data:
-                resource.event_id = data['event_id']
-
-            db.session.commit()
-            
-            return make_response(jsonify({'message': 'Resource updated successfully'}), 200)   
-        
-        def delete(self,id):
-            resource = ResourceModel.query.filter_by(id=id).first()
-
-            db.session.delete(resource)
-            db.session.commit()
-            
-            return make_response(jsonify({'message': 'Resource deleted successfully'}), 200)
-
-
-            
-         
-api.add_resource(Events, '/events')
 api.add_resource(UserResource, '/login')
 api.add_resource(SignupResource, '/add_user')
 api.add_resource(DeleteUser, '/del_user')
-api.add_resource(AllResource, '/resource')
-api.add_resource(UpdateResource, '/resource/<int:id>')
-
-
- 
+api.add_resource(Expenses, '/expenses')
+api.add_resource(Budgets, '/budgets')
+api.add_resource(Events, '/events')
+api.add_resource(AllResource, '/resources')
 
 if __name__ == '__main__':
-    app.run(port=5555, debug=True)   
-        
+    app.run(port=5555, debug=True)
