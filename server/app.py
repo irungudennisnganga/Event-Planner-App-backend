@@ -1,10 +1,11 @@
 from flask import jsonify, request, make_response
 from flask_restful import Api, Resource
-from flask_jwt_extended import create_access_token  # Import create_access_token
+from flask_jwt_extended import JWTManager, create_access_token  # Import create_access_token
 from model import Expense, Budget, User, Event, Resource as ResourceModel, db
 from config import app, bcrypt
 
 api = Api(app)
+jwt = JWTManager(app)  # Initialize JWT with your Flask app
 
 # Routes for handling user-related operations
 class UserResource(Resource):
