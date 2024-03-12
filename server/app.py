@@ -1,24 +1,27 @@
-from flask import jsonify, request, make_response
-from flask_restful import Api, Resource
-from flask_jwt_extended import JWTManager, create_access_token  # Import create_access_token
-from model import Expense, Budget, User, Event, Resource as ResourceModel, db
-from config import app, bcrypt
+from config import app, db, api,bcrypt
+from model import User,Event,Rescource as ResourceModel 
+from flask_restful import Resource
+from flask import request, session,jsonify,make_response
+from flask_jwt_extended import jwt_manager, create_access_token
+from sqlalchemy.exc import IntegrityError
 
-api = Api(app)
-jwt = JWTManager(app)  # Initialize JWT with your Flask app
-
-# Routes for handling user-related operations
-class UserResource(Resource):
+class UserResource(Resource):  # Class names should be capitalized
     def post(self):
         username = request.json.get('username')
         password = request.json.get('password')
         user = User.query.filter_by(username=username).first()
         if not username:
             return make_response(jsonify({"message": "Missing username parameter"}), 400)
-        if not user or not user.authenticate(password):
+        if not user or not user.authenticate(password):  # Check if user is None or authentication fails
             return {"message": "Invalid username or password"}, 401
         access_token = create_access_token(identity=user.id)
-        return make_response(jsonify({'token': access_token}))
+        
+        subject = "Welcome to Event Time!"
+        html = "<p>Thank you for signing in!.</p>"
+        email_response = send_email(subject, html, user.email)
+
+        return make_response(jsonify({'message': 'Sign up successful', 'email_response': email_response},{'token': access_token}), 200)
+        return make_response(jsonify())
 
 class SignupResource(Resource):
     def post(self):
@@ -47,22 +50,27 @@ class SignupResource(Resource):
 
         return make_response(jsonify({'message': 'Sign up successful'}), 200)
     
+    # change username to be enterd through routes
 class DeleteUser(Resource):
     def delete(self):
         data = request.json
         username = data.get('username')
-        user = User.query.filter_by(username=username).first()
+        user=User.query.filter_by(username=username).first()
         
         if not user:
             return make_response(jsonify({'message': 'No user found'}), 400)
         
+        subject = "Exited Event Time!"
+        html = "<p>Thank you for using our services. User deleted successfuly</p>"
+        email_response = send_email(subject, html, user.email)
+
+        # return make_response(jsonify(), 200)
         db.session.delete(user)
         db.session.commit()
         
-        return make_response(jsonify({"message": "Deleted successfully"}), 200)
-
-# Routes for handling expense-related operations
-class Expenses(Resource):
+        return make_response(jsonify({"message":"Deleted successfuly"}), 200)
+        
+class Events(Resource):
     def get(self):
         expenses = Expense.query.all()
         return jsonify([expense.serialize() for expense in expenses])
@@ -151,15 +159,50 @@ class AllResource(Resource):
         )
         db.session.add(new_resource)
         db.session.commit()
-        return jsonify({'message': 'Resource created successfully', 'resource_id': new_resource.id}), 201
+        
+class UpdateResource(Resource):
+        def patch(self,id):
+            data = request.get_json()
+            resource = ResourceModel.query.filter_by(id=id).first()
+            if not resource:
+                return make_response(jsonify({'message': 'Resource not found'}), 404)
 
+
+            if 'name' in data:
+                resource.name = data['name']
+            if 'quantity' in data:
+                resource.quantity = data['quantity']
+            if 'organizer_id' in data:
+                resource.organizer_id = data['organizer_id']
+            if 'user_id' in data:
+                resource.user_id = data['user_id']
+            if 'event_id' in data:
+                resource.event_id = data['event_id']
+
+            db.session.commit()
+            
+            return make_response(jsonify({'message': 'Resource updated successfully'}), 200)   
+        
+        def delete(self,id):
+            resource = ResourceModel.query.filter_by(id=id).first()
+
+            db.session.delete(resource)
+            db.session.commit()
+            
+            return make_response(jsonify({'message': 'Resource deleted successfully'}), 200)
+
+
+            
+         
+api.add_resource(Events, '/events')
 api.add_resource(UserResource, '/login')
 api.add_resource(SignupResource, '/add_user')
 api.add_resource(DeleteUser, '/del_user')
-api.add_resource(Expenses, '/expenses')
-api.add_resource(Budgets, '/budgets')
-api.add_resource(Events, '/events')
-api.add_resource(AllResource, '/resources')
+api.add_resource(AllResource, '/resource')
+api.add_resource(UpdateResource, '/resource/<int:id>')
+
+
+ 
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
