@@ -1,42 +1,26 @@
 from config import app, db, api,bcrypt
-import sib_api_v3_sdk
-from sib_api_v3_sdk.rest import ApiException
-# from __future__ import print_function
+import smtplib
 from model import User,Event,Rescource as ResourceModel ,Budget, Task, Task_Assignment, Expense
 from flask_restful import Resource
 from flask import request,jsonify,make_response,session
 from flask_jwt_extended import jwt_manager, create_access_token, get_jwt_identity, jwt_required,unset_jwt_cookies
+from datetime import datetime
 
+def send_email(email,subject,body):
+    
+    smtp_server = 'smtp.gmail.com'
+    smtp_port = 587
+    sender_email = 'dennis.irungu@student.moringaschool.com'
+    sender_password = 'eenk dqxl hwwv kmxv'
+    subject=subject
+    body=body
 
-# from sqlalchemy.exc import IntegrityError
-configuration = sib_api_v3_sdk.Configuration()
+    message = f'Subject: {subject}\n\n{body}'
 
-# Replace "<your brevo api key here>" with your actual SendinBlue API key
-configuration.api_key['api-key'] = "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"
-
-# Initialize the SendinBlue API instance
-api_instance = sib_api_v3_sdk.TransactionalEmailsApi(sib_api_v3_sdk.ApiClient(configuration))
-
-def send_email(subject, html, to_address=None, receiver_username=None):
-    sender = {"name": "Event Time", "email": "event_time@gmail.com"}
-    html_content = html
-
-    # Define the recipient(s)
-    if to_address:
-        to = [{"email": to_address, "name": receiver_username}]
-    else:
-        to = [{"email": "eventtime@gmail.com", "name": "Event Time"}]
-
-    # Create a SendSmtpEmail object
-    send_smtp_email = sib_api_v3_sdk.SendSmtpEmail(to=to, html_content=html_content, sender=sender, subject=subject)
-
-    try:
-        # Send the email
-        api_response = api_instance.send_transac_email(send_smtp_email)
-        return {"message": "Email sent successfully!"}
-    except ApiException as e:
-        return {"error": f"Exception when calling SMTPApi->send_transac_email: {e}"}
-
+    with smtplib.SMTP(smtp_server, smtp_port) as server:
+        server.starttls()
+        server.login(sender_email, sender_password)
+        server.sendmail(sender_email,email,message)
 class UserResource(Resource):  
     def post(self):
         username = request.json.get('username')
@@ -49,13 +33,14 @@ class UserResource(Resource):
         access_token = create_access_token(identity=user.id)
         
         subject = "Welcome to Event Time!"
-        html = "<p>Thank you for signing in!.</p>"
-        email_response = send_email(subject, html, user.email)
+        html = "Thank you for signing in!"
+        email_response= send_email(user.email,subject,html)
 
-        return make_response(jsonify({'message': 'Sign up successful', 'email_response': email_response},{'token': access_token}), 200)
-        return make_response(jsonify())
+        return make_response(jsonify({'message': 'Sign in successful', 'email_response': email_response},{'token': access_token}), 200)
+        # return make_response(jsonify())
 
 class SignupResource(Resource):
+    
     def post(self):
         data = request.json
         first_name = data.get('first_name')
@@ -81,50 +66,55 @@ class SignupResource(Resource):
         db.session.commit()
 
         # Sending welcome email to the newly signed-up user
-        subject = "Welcome to Event Time!"
-        html = "<p>Thank you for signing up!. Sign up to continue...</p>"
-        email_response = send_email(subject, html, email)
+        subject =  "Welcome to Event Time!"
+        body = f'Thank you for signing up!. Sign up to continue...'
+        
+        send_email(email,subject,body)
+        
+        access_token = create_access_token(identity=new_user.id)
 
-        return make_response(jsonify({'message': 'Sign up successful', 'email_response': email_response}), 200)
+        return make_response(jsonify({'message': 'Sign up successful'},{'token': access_token}), 200)
 
 #  add Logout method
 class CheckSession(Resource):
+    @jwt_required() 
     def get(self):
-        if 'user_id' in session:
-            user_id = session['user_id']
-            return {'message': 'Session is active', 'user_id': user_id}, 200
-        else:
-            return {'message': 'Session is not active'}, 401
+        user_id = get_jwt_identity()
         
-class LogoutResource(Resource):
-    @jwt_required()  
-    def post(self):
-        user = get_jwt_identity()
-
-        response = make_response(jsonify({'message': 'Logout successful'}), 200)
-        unset_jwt_cookies(user)
-        return response
-
-# add checksession method  
+        user= User.query.filter_by(id=user_id).first()
+        
+        if  not user :
+            return {"message":"user not found"}
+        
+        user_data = {
+            "user_id":user.id,
+            "username":user.username
+        }    
+        
+        return make_response(jsonify(user_data), 200)
+            
+     
  
 class DeleteUser(Resource):
-    def delete(self,id):
+    @jwt_required()
+    def delete(self):
         # data = request.json
         # username = data.get('username')
-        user=User.query.filter_by(id=id).first()
+        user_id = get_jwt_identity()
+        user=User.query.filter_by(id=user_id).first()
         
         if not user :
             return make_response(jsonify({'message': 'No user found'}), 400)
         
         subject = "Exited Event Time!"
-        html = "<p>Thank you for using our services. User deleted successfuly</p>"
-        email_response = send_email(subject, html, user.email)
+        html = "Thank you for using our services. User deleted successfuly"
+        email_response = send_email( user.email,subject, html)
 
         # return make_response(jsonify(), 200)
         db.session.delete(user)
         db.session.commit()
         
-        return make_response(jsonify({"message":"Deleted successfuly"},{'message': 'User deletion successful', 'email_response': email_response}), 200)
+        return make_response(jsonify({"message":"Deleted successfuly"},{'message': 'User deletion successful'}), 200)
     
     
     # add update feature for users to update userdetails
@@ -141,16 +131,25 @@ class Events(Resource):
         return response
     
     def post(self):
-        title = request.get_json()['title'] 
-        date = request.get_json()['date'] 
-        time = request.get_json()['time'] 
-        location = request.get_json()['location'] 
-        description = request.get_json()['description'] 
-        category = request.get_json()['category'] 
-        organizer_id = request.get_json()['organizer_id'] 
+        data = request.get_json()
         
-        if time is None or title is None or date is None or location is None or description is None or category is None or organizer_id is None:
+        title = data.get('title')
+        date_str = data.get('date')
+        time_str = data.get('time')
+        location = data.get('location')
+        description = data.get('description')
+        category = data.get('category')
+        organizer_id = data.get('organizer_id')
+        
+        if not all([title, date_str, time_str, location, description, category, organizer_id]):
             return make_response(jsonify({'errors': ['Missing required data']}), 400)
+        
+        
+        try:
+            date = datetime.strptime(date_str, '%Y-%m-%d').date()
+            time = datetime.strptime(time_str, '%H:%M:%S').time()
+        except ValueError:
+            return make_response(jsonify({'errors': ['Invalid date or time format']}), 400)
         
         new_event = Event(
             title=title,
@@ -164,7 +163,50 @@ class Events(Resource):
         
         db.session.add(new_event)
         db.session.commit()
-   
+class EventHandler(Resource):
+    def patch(self, id):
+        data = request.get_json()
+        event = Event.query.filter_by(id=id).first()
+        if not event:
+            return make_response(jsonify({'message': 'Event not found'}), 404)
+        
+        try:
+            if 'category' in data:
+                event.category = data['category']
+            if 'date' in data:
+                # Ensure the date is in the correct format
+                event.date = datetime.strptime(data['date'], '%Y-%m-%d').date()
+            if 'organizer_id' in data:
+                event.organizer_id = data['organizer_id']
+            if 'description' in data:
+                event.description = data['description']
+            if 'location' in data:
+                event.location = data['location']
+            if 'time' in data:
+                # Convert time string to Python time object
+                event.time = datetime.strptime(data['time'], '%H:%M:%S').time()
+            if 'title' in data:
+                event.title = data['title']
+            
+            db.session.commit()
+            return make_response(jsonify({'message': 'Event updated successfully'}), 200)
+        except ValueError:
+            return make_response(jsonify({'error': 'Invalid date or time format'}), 400)
+        
+    def delete(self, id):
+        event = Event.query.filter_by(id=id).first()
+        
+        if not event:
+            return make_response(jsonify({'message': 'No Event'}), 404)
+
+        # Ensure to delete associated resources before deleting the event
+        for resource in event.resources:
+            db.session.delete(resource)
+
+        db.session.delete(event)
+        db.session.commit()
+        
+        return make_response(jsonify({'message': 'Event deleted successfully'}), 200)
 class AllResource(Resource):
     def get(self):
         resources = [resource.serialize() for resource in ResourceModel.query.all()]  
@@ -215,6 +257,9 @@ class UpdateResource(Resource):
         
         def delete(self,id):
             resource = ResourceModel.query.filter_by(id=id).first()
+            
+            if not resource:
+                return make_response(jsonify({'message': 'No resource'}), 200)
 
             db.session.delete(resource)
             db.session.commit()
@@ -225,25 +270,156 @@ class UpdateResource(Resource):
 
 # add Budget Route with GET, POST, DELETE, PATCH
 
-# add Task Routes with GET, POST, DELETE , PATCH
-
-# add Task_management Route with GET, POST, DELETE, PATCH
-
 # add Expense Route withe GET, POST, DELETE, PATCH
+
+# add Task Routes with GET, POST, DELETE , PATCH
+class AllTask(Resource):
+    def get(self):
+        task = [resource.serialize() for resource in Task.query.all()]
+        
+        return make_response(jsonify(task))
+    
+    def post(self):
+        title = request.get_json()['title'] 
+        deadline = request.get_json()['deadline'] 
+        completed = request.get_json()['completed'] 
+        organizer_id = request.get_json()['organizer_id']
+        user_id =request.get_json()['user_id'] 
+        event_id = request.get_json()['event_id'] 
+        
+        deadline_datetime = datetime.strptime(deadline, "%Y-%m-%d")
+        
+        if title is None or deadline is None or completed is None or organizer_id is None or user_id is None or event_id is None:
+            return make_response(jsonify({'errors': ['Missing required data']}), 400)
+        
+        new_task = Task(
+            title=title,
+            deadline=deadline_datetime,
+            completed=completed,
+            organizer_id=organizer_id,
+            user_id=user_id,
+            event_id=event_id
+        )
+        
+        db.session.add(new_task)
+        db.session.commit()
+        
+        return make_response(jsonify({'message': 'added successfuly'}), 200)
+
+class UpdateDeleteTask(Resource):
+        def patch(self,id):
+            data = request.get_json()
+            task = Task.query.filter_by(id=id).first()
+            if not task:
+                return make_response(jsonify({'message': 'Task not found'}), 404)
+
+
+            if 'title' in data:
+                task.title = data['title']
+            if 'deadline' in data:
+                task.deadline = data['deadline']
+            if 'organizer_id' in data:
+                task.organizer_id = data['organizer_id']
+            if 'completed' in data:
+                task.completed = data['completed']
+            if 'event_id' in data:
+                task.event_id = data['event_id']
+                
+            if 'user_id' in data:
+                task.user_id =data['user_id']
+
+            db.session.commit()
             
+            return make_response(jsonify({'message': 'Task updated successfully'}), 200)   
+        
+        def delete(self,id):
+            task = Task.query.filter_by(id=id).first()
+            if not task:
+                return make_response(jsonify({'message': 'No task'}), 200) 
+                
+
+            db.session.delete(task)
+            db.session.commit()
+            
+            return make_response(jsonify({'message': 'Task deleted successfully'}), 200)             
+        
+# add Task_management Route with GET, POST, DELETE, PATCH
+class AllTask_management(Resource):
+    def get(self):
+        task = [resource.serialize() for resource in Task_Assignment.query.all()]
+        
+        return make_response(jsonify(task))
+    
+    def post(self):
+        task_id = request.get_json()['task_id'] 
+        user_id = request.get_json()['user_id'] 
+        organizer_id = request.get_json()['organizer_id'] 
+        completed = request.get_json()['completed']
+        
+        
+        if task_id is None or user_id is None or organizer_id is None:
+            return make_response(jsonify({'errors': ['Missing required data']}), 400)
+        
+        new_task_management=Task_Assignment(
+            task_id=task_id,
+            user_id=user_id,
+            organizer_id=organizer_id,
+            completed=completed
+        )
+        
+        db.session.add(new_task_management)
+        db.session.commit()
+        
+        return make_response(jsonify({'message': 'Task assignment added successfully'}), 200)
+ 
+class UpdateTaskAssignment(Resource):
+        def patch(self,id):
+            data = request.get_json()
+            task_assignment = Task_Assignment.query.filter_by(id=id).first()
+            if not task_assignment:
+                return make_response(jsonify({'message': 'Task_assignment not found'}), 404)
+
+
+            if 'task_id' in data:
+                task_assignment.task_id = data['task_id']
+            if 'organizer_id' in data:
+                task_assignment.organizer_id = data['organizer_id']
+            if 'completed' in data:
+                task_assignment.completed = data['completed']
+            if 'user_id' in data:
+                task_assignment.user_id =data['user_id']
+
+            db.session.commit()
+            
+            return make_response(jsonify({'message': 'Task_assignment updated successfully'}), 200)   
+        
+        def delete(self,id):
+            task_assignment = Task_Assignment.query.filter_by(id=id).first()
+            if not task_assignment:
+                return make_response(jsonify({'message': 'No task_assignment'}), 200) 
+                
+
+            db.session.delete(task_assignment)
+            db.session.commit()
+            
+            return make_response(jsonify({'message': 'Task_assignment deleted successfully'}), 200)             
 
 
 
 
-api.add_resource(LogoutResource, '/logout')
+# api.add_resource(LogoutResource, '/logout')
 api.add_resource(UserResource, '/login')
 api.add_resource(SignupResource, '/sign_up')
 api.add_resource(Events, '/events')
-api.add_resource(DeleteUser, '/del_user/<int:id>')
+api.add_resource(EventHandler ,'/events/<int:id>')
+api.add_resource(DeleteUser, '/del_user')
 api.add_resource(AllResource, '/resource')
-api.add_resource(UpdateResource, '/resource/<int:id>')
+api.add_resource(UpdateResource, '/resource/<int:id>',endpoint='resource')
+api.add_resource(UpdateDeleteTask, '/task_update/<int:id>')
 api.add_resource(CheckSession, '/check_session', endpoint='check_session')
-
+api.add_resource(AllTask, '/task' )
+api.add_resource(AllTask_management, '/task_management')
+api.add_resource(UpdateTaskAssignment, '/task_management/<int:id>')
 
 
 

@@ -5,7 +5,7 @@ from sqlalchemy import UniqueConstraint
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import validates
 from config import db,bcrypt
-
+from datetime import datetime
 # db = SQLAlchemy()
 
 
@@ -91,7 +91,7 @@ class Event(db.Model, SerializerMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String)
-    date = db.Column(db.DateTime)
+    date = db.Column(db.Date)
     time = db.Column(db.Time)
     location = db.Column(db.String)
     description = db.Column(db.String)
@@ -100,24 +100,27 @@ class Event(db.Model, SerializerMixin):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
-    task = db.relationship("Task", backref='event')
-    resources = db.relationship('Rescource', backref='event')
+    tasks = db.relationship("Task", backref='event')
+    resources = db.relationship('Rescource', backref='event')  # Fixed typo in resource
     expenses = db.relationship('Expense', backref='event')
 
     budget = db.relationship('Budget', backref='event', lazy="select", uselist=False)  
-    
+
     def serialize(self):
+        serialized_date = self.date.strftime('%Y-%m-%d') if self.date else None
+        serialized_time = self.time.strftime('%H:%M:%S') if self.time else None
+        
         return {
             'id': self.id,
             'title': self.title,
-            'date': self.date.strftime('%Y-%m-%d'),  
-            'time': self.time.strftime('%H:%M:%S'),
+            'date': serialized_date,
+            'time': serialized_time,
             'location': self.location,
             'description': self.description,
             'category': self.category,
             'organizer_id': self.organizer_id,
-            # 'task':self.task
-    }
+            # 'tasks': [task.serialize() for task in self.tasks] if self.tasks else []  # Serialize tasks if needed
+        }
 
 
 
@@ -126,7 +129,7 @@ class Task(db.Model, SerializerMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String)
-    deadline = db.Column(db.Time)
+    deadline = db.Column(db.String)
     completed = db.Column(db.Boolean)
     organizer_id = db.Column(db.Integer)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
@@ -137,16 +140,24 @@ class Task(db.Model, SerializerMixin):
     task_assignment = db.relationship('Task_Assignment', backref='task')
     
     def serialize(self):
+        deadline_str = str(self.deadline)
+        deadline_datetime = None
+        if self.deadline:
+            try:
+                deadline_datetime = datetime.strptime(deadline_str, '%Y-%m-%d')
+            except ValueError:
+                # Handle invalid date format gracefully
+                deadline_datetime = None
+
         return {
             'id': self.id,
             'title': self.title,
-            'deadline': self.date.strftime('%Y-%m-%d'),  # Assuming self.date is a datetime object
+            'deadline': deadline_datetime.strftime('%Y-%m-%d') if deadline_datetime else None,
             'completed': self.completed,
             'user_id': self.user_id,
             'event_id': self.event_id,
-            'organizer_id':self.organizer_id
-            
-    }
+            'organizer_id': self.organizer_id
+        }
 class Budget(db.Model,SerializerMixin):
     __tablename__ ='budgets'   
     
@@ -195,18 +206,25 @@ class Task_Assignment(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'))
     user_id = db.Column(db.Integer , db.ForeignKey('users.id'))
-    deadline = db.Column(db.Time)
+    # deadline = db.Column(db.DateTime)
     organizer_id = db.Column(db.Integer)
 
-    completed = db.Column(db.Boolean)
+    completed = db.Column(db.Boolean, default=False)
     
     def serialize(self):
+        # deadline_datetime = None
+        # if self.deadline:
+        #     try:
+        #         deadline_datetime = datetime.strptime(self.deadline, '%Y-%m-%d')
+        #     except ValueError:
+        #         # Handle invalid date format gracefully
+        #         deadline_datetime = None
         return {
             'id': self.id,
             'task_id':self.task_id,
             'user_id':self.user_id,
             'organizer_id': self.organizer_id,
-            'deadline': self.deadline,
+            # 'deadline': deadline_datetime.strftime('%Y-%m-%d %H:%M:%S') if deadline_datetime else None,
             'completed':self.completed
             
     }
