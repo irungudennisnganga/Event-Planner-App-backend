@@ -269,13 +269,6 @@ class UpdateResource(Resource):
             return make_response(jsonify({'message': 'Resource deleted successfully'}), 200)
         
 
-
-# add Budget Route with GET, POST, DELETE, PATCH
-
-# add Expense Route withe GET, POST, DELETE, PATCH
-
-# add Task Routes with GET, POST, DELETE , PATCH
-         #Routes for handling expense-related operations
 class Expenses(Resource):
     def get(self):
         expenses = Expense.query.all()
@@ -321,8 +314,7 @@ class Budgets(Resource):
 
         return jsonify({'message': 'Budget created successfully', 'budget_id': new_budget.id}), 201
 
-api.add_resource(Expenses, '/expenses')
-api.add_resource(Budgets, '/budgets')
+
 
 class AllTask(Resource):
     def get(self):
@@ -502,7 +494,8 @@ api.add_resource(CheckSession, '/check_session', endpoint='check_session')
 api.add_resource(AllTask, '/task' )
 api.add_resource(AllTask_management, '/task_management')
 api.add_resource(UpdateTaskAssignment, '/task_management/<int:id>')
-
+api.add_resource(Expenses, '/expenses')
+api.add_resource(Budgets, '/budgets')
 
 with app.app_context():
     send_task_deadline_notifications() 
