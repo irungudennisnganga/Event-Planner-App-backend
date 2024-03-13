@@ -1,10 +1,12 @@
 from config import app, db, api,bcrypt
 import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from model import User,Event,Rescource as ResourceModel ,Budget, Task, Task_Assignment, Expense
 from flask_restful import Resource
 from flask import request,jsonify,make_response,session
 from flask_jwt_extended import jwt_manager, create_access_token, get_jwt_identity, jwt_required,unset_jwt_cookies
-from datetime import datetime
+from datetime import datetime,timedelta
 
 def send_email(email,subject,body):
     
@@ -404,9 +406,39 @@ class UpdateTaskAssignment(Resource):
             
             return make_response(jsonify({'message': 'Task_assignment deleted successfully'}), 200)             
 
+def send_email_notification(recipient, subject, body):
+    # Set up the SMTP server
+    smtp_server = smtplib.SMTP('smtp.gmail.com', 587)
+    smtp_server.starttls()
+    smtp_server.login('dennis.irungu@student.moringaschool.com', 'eenk dqxl hwwv kmxv')
 
+    # Create message
+    msg = MIMEMultipart()
+    msg['From'] = 'dennis.irungu@student.moringaschool.com'
+    msg['To'] = recipient
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
 
+    # Send email
+    smtp_server.send_message(msg)
+    smtp_server.quit()
 
+def send_task_deadline_notifications():
+    # Get tasks with approaching deadlines
+    approaching_deadline_tasks = Task.query.filter(Task.deadline <= datetime.now(), 
+                                       Task.deadline <= datetime.now() + timedelta(days=7)).all()
+    print(approaching_deadline_tasks)
+    for task in approaching_deadline_tasks:
+        # Get users assigned to the task
+        assigned_users = [assignment.user.email for assignment in task.task_assignment]
+        # Prepare email content
+        subject = f'Upcoming Deadline: {task.title}'
+        body = f'Dear User,\n\nThis is a reminder that the deadline for the task "{task.title}" is approaching. Please make sure to complete it on time that is {task.deadline}.\n\nBest regards,\nThe Event Planner Team'
+        # Send email notifications to assigned users
+        for user_email in assigned_users:
+            send_email_notification(user_email, subject, body)
+            
+            
 # api.add_resource(LogoutResource, '/logout')
 api.add_resource(UserResource, '/login')
 api.add_resource(SignupResource, '/sign_up')
@@ -422,9 +454,10 @@ api.add_resource(AllTask_management, '/task_management')
 api.add_resource(UpdateTaskAssignment, '/task_management/<int:id>')
 
 
-
- 
+with app.app_context():
+    send_task_deadline_notifications() 
 
 if __name__ == '__main__':
-    app.run(port=5555, debug=True)   
+    app.run(port=5555, debug=True) 
+     
         

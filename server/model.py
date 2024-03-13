@@ -158,6 +158,28 @@ class Task(db.Model, SerializerMixin):
             'event_id': self.event_id,
             'organizer_id': self.organizer_id
         }
+
+class Task_Assignment(db.Model, SerializerMixin):
+    __tablename__ ='task_assignments'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'))
+    user_id = db.Column(db.Integer , db.ForeignKey('users.id'))
+    organizer_id = db.Column(db.Integer)
+
+    completed = db.Column(db.Boolean, default=False)
+    
+    def serialize(self):
+        return {
+            'id': self.id,
+            'task_id':self.task_id,
+            'user_id':self.user_id,
+            'organizer_id': self.organizer_id,
+            'completed':self.completed
+            
+    }
+    
+
 class Budget(db.Model,SerializerMixin):
     __tablename__ ='budgets'   
     
@@ -199,37 +221,6 @@ class Expense(db.Model, SerializerMixin):
             'event_id': self.event_id,
             
     }
-
-class Task_Assignment(db.Model, SerializerMixin):
-    __tablename__ ='task_assignments'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    task_id = db.Column(db.Integer, db.ForeignKey('tasks.id'))
-    user_id = db.Column(db.Integer , db.ForeignKey('users.id'))
-    # deadline = db.Column(db.DateTime)
-    organizer_id = db.Column(db.Integer)
-
-    completed = db.Column(db.Boolean, default=False)
-    
-    def serialize(self):
-        # deadline_datetime = None
-        # if self.deadline:
-        #     try:
-        #         deadline_datetime = datetime.strptime(self.deadline, '%Y-%m-%d')
-        #     except ValueError:
-        #         # Handle invalid date format gracefully
-        #         deadline_datetime = None
-        return {
-            'id': self.id,
-            'task_id':self.task_id,
-            'user_id':self.user_id,
-            'organizer_id': self.organizer_id,
-            # 'deadline': deadline_datetime.strftime('%Y-%m-%d %H:%M:%S') if deadline_datetime else None,
-            'completed':self.completed
-            
-    }
-    
-
 
     
     
