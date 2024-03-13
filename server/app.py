@@ -274,8 +274,38 @@ class UpdateResource(Resource):
 
 # add Expense Route withe GET, POST, DELETE, PATCH
 
-# add Task Routes with GET, POST, DELETE , PATCH
-         #Routes for handling expense-related operations
+# add Task 
+        # Add Budget Route with GET, POST, DELETE, PATCH
+class Budgets(Resource):
+    def get(self):
+        budgets = Budget.query.all()
+        return jsonify([budget.serialize() for budget in budgets])
+
+    def post(self):
+        data = request.json
+        if not data:
+            return jsonify({'message': 'No input data provided'}), 400
+
+        new_budget = Budget(
+            total=data.get('total'),
+            event_id=data.get('event_id'),
+            organizer_id=data.get('organizer_id')
+        )
+
+        db.session.add(new_budget)
+        db.session.commit()
+
+        return jsonify({'message': 'Budget created successfully', 'budget_id': new_budget.id}), 201
+
+    def delete(self):
+        # Implement delete functionality here
+        pass
+
+    def patch(self):
+        # Implement patch functionality here
+        pass
+
+# Add Expense Route with GET, POST, DELETE, PATCH
 class Expenses(Resource):
     def get(self):
         expenses = Expense.query.all()
@@ -299,28 +329,15 @@ class Expenses(Resource):
 
         return jsonify({'message': 'Expense created successfully', 'expense_id': new_expense.id}), 201
 
-# Routes for handling budget-related operations
-class Budgets(Resource):
-    def get(self):
-        budgets = Budget.query.all()
-        return jsonify([budget.serialize() for budget in budgets])
+    def delete(self):
+        # Implement delete functionality here
+        pass
 
-    def post(self):
-        data = request.json
-        if not data:
-            return jsonify({'message': 'No input data provided'}), 400
+    def patch(self):
+        # Implement patch functionality here
+        pass
 
-        new_budget = Budget(
-            total=data.get('total'),
-            event_id=data.get('event_id'),
-            organizer_id=data.get('organizer_id')
-        )
-
-        db.session.add(new_budget)
-        db.session.commit()
-
-        return jsonify({'message': 'Budget created successfully', 'budget_id': new_budget.id}), 201
-
+# Add these routes to your API
 api.add_resource(Expenses, '/expenses')
 api.add_resource(Budgets, '/budgets')
 
