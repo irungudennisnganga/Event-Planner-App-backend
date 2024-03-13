@@ -269,6 +269,13 @@ class UpdateResource(Resource):
             return make_response(jsonify({'message': 'Resource deleted successfully'}), 200)
         
 
+
+# add Budget Route with GET, POST, DELETE, PATCH
+
+# add Expense Route withe GET, POST, DELETE, PATCH
+
+# add Task Routes with GET, POST, DELETE , PATCH
+         #Routes for handling expense-related operations
 class Expenses(Resource):
     def get(self):
         expenses = Expense.query.all()
@@ -314,7 +321,8 @@ class Budgets(Resource):
 
         return jsonify({'message': 'Budget created successfully', 'budget_id': new_budget.id}), 201
 
-
+api.add_resource(Expenses, '/expenses')
+api.add_resource(Budgets, '/budgets')
 
 class AllTask(Resource):
     def get(self):
