@@ -275,6 +275,55 @@ class UpdateResource(Resource):
 # add Expense Route withe GET, POST, DELETE, PATCH
 
 # add Task Routes with GET, POST, DELETE , PATCH
+         #Routes for handling expense-related operations
+class Expenses(Resource):
+    def get(self):
+        expenses = Expense.query.all()
+        return jsonify([expense.serialize() for expense in expenses])
+
+    def post(self):
+        data = request.json
+        if not data:
+            return jsonify({'message': 'No input data provided'}), 400
+
+        new_expense = Expense(
+            description=data.get('description'),
+            amount=data.get('amount'),
+            user_id=data.get('user_id'),
+            event_id=data.get('event_id'),
+            organizer_id=data.get('organizer_id')
+        )
+
+        db.session.add(new_expense)
+        db.session.commit()
+
+        return jsonify({'message': 'Expense created successfully', 'expense_id': new_expense.id}), 201
+
+# Routes for handling budget-related operations
+class Budgets(Resource):
+    def get(self):
+        budgets = Budget.query.all()
+        return jsonify([budget.serialize() for budget in budgets])
+
+    def post(self):
+        data = request.json
+        if not data:
+            return jsonify({'message': 'No input data provided'}), 400
+
+        new_budget = Budget(
+            total=data.get('total'),
+            event_id=data.get('event_id'),
+            organizer_id=data.get('organizer_id')
+        )
+
+        db.session.add(new_budget)
+        db.session.commit()
+
+        return jsonify({'message': 'Budget created successfully', 'budget_id': new_budget.id}), 201
+
+api.add_resource(Expenses, '/expenses')
+api.add_resource(Budgets, '/budgets')
+
 class AllTask(Resource):
     def get(self):
         task = [resource.serialize() for resource in Task.query.all()]
@@ -437,6 +486,7 @@ def send_task_deadline_notifications():
         # Send email notifications to assigned users
         for user_email in assigned_users:
             send_email_notification(user_email, subject, body)
+            
             
             
 # api.add_resource(LogoutResource, '/logout')
