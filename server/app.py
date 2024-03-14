@@ -270,21 +270,16 @@ class UpdateResource(Resource):
         
 
 
-# add Budget Route with GET, POST, DELETE, PATCH
 
-# add Expense Route withe GET, POST, DELETE, PATCH
-
-# add Task Routes with GET, POST, DELETE , PATCH
-         #Routes for handling expense-related operations
 class Expenses(Resource):
     def get(self):
-        expenses = Expense.query.all()
-        return jsonify([expense.serialize() for expense in expenses])
+        
+        return make_response(jsonify([expense.serialize() for expense in Expense.query.all()]))
 
     def post(self):
         data = request.json
         if not data:
-            return jsonify({'message': 'No input data provided'}), 400
+            return make_response(jsonify({'message': 'No input data provided'}), 400)
 
         new_expense = Expense(
             description=data.get('description'),
@@ -297,32 +292,99 @@ class Expenses(Resource):
         db.session.add(new_expense)
         db.session.commit()
 
-        return jsonify({'message': 'Expense created successfully', 'expense_id': new_expense.id}), 201
+        return make_response(jsonify({'message': 'Expense created successfully'}), 201)
 
-# Routes for handling budget-related operations
+class ExpenseUpdates(Resource):
+    def patch(self,id):
+            data = request.get_json()
+            expense = Expense.query.filter_by(id=id).first()
+            if not expense:
+                return make_response(jsonify({'message': 'Expense not found'}), 404)
+
+
+            if 'event_id' in data:
+                expense.event_id = data['event_id']
+            if 'organizer_id' in data:
+                expense.organizer_id = data['organizer_id']
+            if 'amount' in data:
+                expense.total = data['amount']
+            if 'description' in data:
+                expense.description = data['description']
+                
+            if 'user_id' in data:
+                expense.user_id = data['user_id']
+          
+            db.session.commit()
+            
+            return make_response(jsonify({'message': 'Expense updated successfully'}), 200)   
+        
+    def delete(self,id):
+            expense = Expense.query.filter_by(id=id).first()
+            if not expense:
+                return make_response(jsonify({'message': 'No expense'}), 200) 
+                
+
+            db.session.delete(expense)
+            db.session.commit()
+            
+            return make_response(jsonify({'message': 'Expense deleted successfully'}), 200)             
+
+
 class Budgets(Resource):
     def get(self):
-        budgets = Budget.query.all()
-        return jsonify([budget.serialize() for budget in budgets])
+        
+        return jsonify([budget.serialize() for budget in Budget.query.all()])
 
     def post(self):
-        data = request.json
-        if not data:
-            return jsonify({'message': 'No input data provided'}), 400
+        total = request.get_json()['total'] 
+        event_id = request.get_json()['event_id'] 
+        organizer_id = request.get_json()['organizer_id'] 
+
+
+        if total is None or event_id is None or organizer_id is None:
+            return make_response(jsonify({'message': 'No input data provided'}), 400)
 
         new_budget = Budget(
-            total=data.get('total'),
-            event_id=data.get('event_id'),
-            organizer_id=data.get('organizer_id')
+            total=total,
+            event_id=event_id,
+            organizer_id=organizer_id
         )
 
         db.session.add(new_budget)
         db.session.commit()
 
-        return jsonify({'message': 'Budget created successfully', 'budget_id': new_budget.id}), 201
+        return make_response(jsonify({'message': 'Budget created successfully'}), 201)
 
-api.add_resource(Expenses, '/expenses')
-api.add_resource(Budgets, '/budgets')
+class BudgetUpdates(Resource):
+    def patch(self,id):
+            data = request.get_json()
+            budget = Budget.query.filter_by(id=id).first()
+            if not budget:
+                return make_response(jsonify({'message': 'Budget not found'}), 404)
+
+
+            if 'event_id' in data:
+                budget.event_id = data['event_id']
+            if 'organizer_id' in data:
+                budget.organizer_id = data['organizer_id']
+            if 'total' in data:
+                budget.total = data['total']
+          
+            db.session.commit()
+            
+            return make_response(jsonify({'message': 'Budget updated successfully'}), 200)   
+        
+    def delete(self,id):
+            budget = Budget.query.filter_by(id=id).first()
+            if not budget:
+                return make_response(jsonify({'message': 'No budget'}), 200) 
+                
+
+            db.session.delete(budget)
+            db.session.commit()
+            
+            return make_response(jsonify({'message': 'Budget deleted successfully'}), 200)             
+
 
 class AllTask(Resource):
     def get(self):
@@ -504,6 +566,8 @@ api.add_resource(AllTask_management, '/task_management')
 api.add_resource(UpdateTaskAssignment, '/task_management/<int:id>')
 api.add_resource(Expenses, '/expenses')
 api.add_resource(Budgets, '/budgets')
+api.add_resource(BudgetUpdates, '/budget/<int:id>')
+api.add_resource(ExpenseUpdates, '/expense/<int:id>')
 
 with app.app_context():
     send_task_deadline_notifications() 
