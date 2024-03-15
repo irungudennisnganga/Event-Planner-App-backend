@@ -247,12 +247,12 @@ class AllResource(Resource):
             return {"message":"not user"}
         name = request.get_json()['name'] 
         quantity = request.get_json()['quantity'] 
-        organizer_id = request.get_json()['organizer_id'] 
-        user_id = request.get_json()['user_id'] 
+        organizer_id = current_id 
+        user_id = 1 
         event_id = request.get_json()['event_id'] 
         
         if name is None or quantity is None or user_id is None or event_id is None or organizer_id is None :
-            return make_response(jsonify({'errors': ['Missing required data']}), 400)
+            return make_response(jsonify({'errors': ['Missing required data']}), 401)
         
         new_resource =ResourceModel(
             name=name,
@@ -355,8 +355,8 @@ class ExpenseUpdates(Resource):
 
         if 'event_id' in data:
             expense.event_id = data['event_id']
-        if 'organizer_id' in data:
-            expense.organizer_id = data['organizer_id']
+        
+            expense.organizer_id = current_id
         if 'amount' in data:
             expense.total = data['amount']
         if 'description' in data:
@@ -397,7 +397,7 @@ class Budgets(Resource):
         
         total = request.get_json()['total'] 
         event_id = request.get_json()['event_id'] 
-        organizer_id = request.get_json()['organizer_id'] 
+        organizer_id = current_id 
 
 
         if total is None or event_id is None or organizer_id is None:
@@ -415,7 +415,14 @@ class Budgets(Resource):
         return make_response(jsonify({'message': 'Budget created successfully'}), 201)
 
 class BudgetUpdates(Resource):
+    @jwt_required()
     def patch(self,id):
+            current_id=get_jwt_identity()
+        
+            user=User.query.filter_by(id=current_id).first()
+        
+            if not user:
+                return {"message":"not user"}
             data = request.get_json()
             budget = Budget.query.filter_by(id=id).first()
             if not budget:
@@ -424,8 +431,8 @@ class BudgetUpdates(Resource):
 
             if 'event_id' in data:
                 budget.event_id = data['event_id']
-            if 'organizer_id' in data:
-                budget.organizer_id = data['organizer_id']
+            
+                budget.organizer_id = current_id
             if 'total' in data:
                 budget.total = data['total']
           
@@ -462,7 +469,7 @@ class AllTask(Resource):
         title = request.get_json()['title'] 
         deadline = request.get_json()['deadline'] 
         completed = request.get_json()['completed'] 
-        organizer_id = request.get_json()['organizer_id']
+        organizer_id = current_id
         user_id =request.get_json()['user_id'] 
         event_id = request.get_json()['event_id'] 
         

@@ -108,7 +108,7 @@ class Event(db.Model, SerializerMixin):
 
     def serialize(self):
         serialized_date = self.date.strftime('%Y-%m-%d') if self.date else None
-        serialized_time = self.time.strftime('%H:%M:%S') if self.time else None
+        serialized_time = self.time.strftime('%H:%M') if self.time else None
         
         return {
             'id': self.id,
@@ -130,7 +130,7 @@ class Task(db.Model, SerializerMixin):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String)
     deadline = db.Column(db.String)
-    completed = db.Column(db.Boolean)
+    completed = db.Column(db.String)
     organizer_id = db.Column(db.Integer)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     event_id = db.Column(db.Integer, db.ForeignKey('events.id'))
