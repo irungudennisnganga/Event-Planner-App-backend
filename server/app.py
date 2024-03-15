@@ -131,8 +131,14 @@ class Events(Resource):
         )
         
         return response
-    
+    @jwt_required()
     def post(self):
+        current_id = get_jwt_identity()
+        # print(current_id)
+        user = User.query.filter_by(id=current_id).first()
+        
+        if not user:
+            return {"message": "User not found"}
         data = request.get_json()
         
         title = data.get('title')
@@ -141,7 +147,7 @@ class Events(Resource):
         location = data.get('location')
         description = data.get('description')
         category = data.get('category')
-        organizer_id = data.get('organizer_id')
+        organizer_id = current_id
         
         if not all([title, date_str, time_str, location, description, category, organizer_id]):
             return make_response(jsonify({'errors': ['Missing required data']}), 400)
@@ -149,7 +155,7 @@ class Events(Resource):
         
         try:
             date = datetime.strptime(date_str, '%Y-%m-%d').date()
-            time = datetime.strptime(time_str, '%H:%M:%S').time()
+            time = datetime.strptime(time_str, '%H:%M').time()
         except ValueError:
             return make_response(jsonify({'errors': ['Invalid date or time format']}), 400)
         
@@ -166,7 +172,23 @@ class Events(Resource):
         db.session.add(new_event)
         db.session.commit()
 class EventHandler(Resource):
+    def get(self, id):
+        event = Event.query.filter_by(id=id).first()
+
+        if event is None:
+            return jsonify({'error': 'Event not found'}), 404  # Return a 404 error if event is not found
+
+        return make_response(jsonify(event.serialize()))
+    @jwt_required()
     def patch(self, id):
+        
+        
+        current_id=get_jwt_identity()
+        
+        user=User.query.filter_by(id=current_id).first()
+        if not user:
+            return {"message":"not user"}
+        
         data = request.get_json()
         event = Event.query.filter_by(id=id).first()
         if not event:
@@ -178,15 +200,15 @@ class EventHandler(Resource):
             if 'date' in data:
                 # Ensure the date is in the correct format
                 event.date = datetime.strptime(data['date'], '%Y-%m-%d').date()
-            if 'organizer_id' in data:
-                event.organizer_id = data['organizer_id']
+           
+                event.organizer_id = current_id
             if 'description' in data:
                 event.description = data['description']
             if 'location' in data:
                 event.location = data['location']
             if 'time' in data:
                 # Convert time string to Python time object
-                event.time = datetime.strptime(data['time'], '%H:%M:%S').time()
+                event.time = datetime.strptime(data['time'], '%H:%M').time()
             if 'title' in data:
                 event.title = data['title']
             
@@ -214,7 +236,15 @@ class AllResource(Resource):
         resources = [resource.serialize() for resource in ResourceModel.query.all()]  
         return make_response(jsonify(resources))
     
+    @jwt_required()
     def post(self):
+        
+        current_id=get_jwt_identity()
+        
+        user=User.query.filter_by(id=current_id).first()
+        
+        if not user:
+            return {"message":"not user"}
         name = request.get_json()['name'] 
         quantity = request.get_json()['quantity'] 
         organizer_id = request.get_json()['organizer_id'] 
@@ -235,7 +265,14 @@ class AllResource(Resource):
         db.session.commit()
         
 class UpdateResource(Resource):
+        @jwt_required()
         def patch(self,id):
+            current_id=get_jwt_identity()
+        
+            user=User.query.filter_by(id=current_id).first()
+            if not user:
+                return {"message":"not user"}
+            
             data = request.get_json()
             resource = ResourceModel.query.filter_by(id=id).first()
             if not resource:
@@ -246,8 +283,8 @@ class UpdateResource(Resource):
                 resource.name = data['name']
             if 'quantity' in data:
                 resource.quantity = data['quantity']
-            if 'organizer_id' in data:
-                resource.organizer_id = data['organizer_id']
+            
+                resource.organizer_id = current_id
             if 'user_id' in data:
                 resource.user_id = data['user_id']
             if 'event_id' in data:
@@ -256,7 +293,7 @@ class UpdateResource(Resource):
             db.session.commit()
             
             return make_response(jsonify({'message': 'Resource updated successfully'}), 200)   
-        
+        # @jwt_required()
         def delete(self,id):
             resource = ResourceModel.query.filter_by(id=id).first()
             
@@ -276,7 +313,14 @@ class Expenses(Resource):
         
         return make_response(jsonify([expense.serialize() for expense in Expense.query.all()]))
 
+    @jwt_required()
     def post(self):
+        current_id=get_jwt_identity()
+        
+        user=User.query.filter_by(id=current_id).first()
+        if not user:
+            return {"message":"not user"}
+            
         data = request.json
         if not data:
             return make_response(jsonify({'message': 'No input data provided'}), 400)
@@ -286,7 +330,7 @@ class Expenses(Resource):
             amount=data.get('amount'),
             user_id=data.get('user_id'),
             event_id=data.get('event_id'),
-            organizer_id=data.get('organizer_id')
+            organizer_id=current_id
         )
 
         db.session.add(new_expense)
@@ -295,29 +339,36 @@ class Expenses(Resource):
         return make_response(jsonify({'message': 'Expense created successfully'}), 201)
 
 class ExpenseUpdates(Resource):
+    @jwt_required()
     def patch(self,id):
-            data = request.get_json()
-            expense = Expense.query.filter_by(id=id).first()
-            if not expense:
-                return make_response(jsonify({'message': 'Expense not found'}), 404)
-
-
-            if 'event_id' in data:
-                expense.event_id = data['event_id']
-            if 'organizer_id' in data:
-                expense.organizer_id = data['organizer_id']
-            if 'amount' in data:
-                expense.total = data['amount']
-            if 'description' in data:
-                expense.description = data['description']
-                
-            if 'user_id' in data:
-                expense.user_id = data['user_id']
-          
-            db.session.commit()
-            
-            return make_response(jsonify({'message': 'Expense updated successfully'}), 200)   
+        current_id=get_jwt_identity()
         
+        user=User.query.filter_by(id=current_id).first()
+        if not user:
+            return {"message":"not user"}
+        
+        data = request.get_json()
+        expense = Expense.query.filter_by(id=id).first()
+        if not expense:
+            return make_response(jsonify({'message': 'Expense not found'}), 404)
+
+
+        if 'event_id' in data:
+            expense.event_id = data['event_id']
+        if 'organizer_id' in data:
+            expense.organizer_id = data['organizer_id']
+        if 'amount' in data:
+            expense.total = data['amount']
+        if 'description' in data:
+            expense.description = data['description']
+            
+        if 'user_id' in data:
+            expense.user_id = data['user_id']
+        
+        db.session.commit()
+        
+        return make_response(jsonify({'message': 'Expense updated successfully'}), 200)   
+    
     def delete(self,id):
             expense = Expense.query.filter_by(id=id).first()
             if not expense:
@@ -335,7 +386,15 @@ class Budgets(Resource):
         
         return jsonify([budget.serialize() for budget in Budget.query.all()])
 
+    @jwt_required()
     def post(self):
+        current_id=get_jwt_identity()
+        
+        user=User.query.filter_by(id=current_id).first()
+        
+        if not user:
+            return {"message":"not user"}
+        
         total = request.get_json()['total'] 
         event_id = request.get_json()['event_id'] 
         organizer_id = request.get_json()['organizer_id'] 
@@ -392,7 +451,14 @@ class AllTask(Resource):
         
         return make_response(jsonify(task))
     
+    @jwt_required()
     def post(self):
+        current_id=get_jwt_identity()
+        
+        user=User.query.filter_by(id=current_id).first()
+        if not user:
+            return {"message":"not user"}
+            
         title = request.get_json()['title'] 
         deadline = request.get_json()['deadline'] 
         completed = request.get_json()['completed'] 
@@ -420,7 +486,14 @@ class AllTask(Resource):
         return make_response(jsonify({'message': 'added successfuly'}), 200)
 
 class UpdateDeleteTask(Resource):
+        @jwt_required()
         def patch(self,id):
+            current_id=get_jwt_identity()
+        
+            user=User.query.filter_by(id=current_id).first()
+            if not user:
+                return {"message":"not user"}
+            
             data = request.get_json()
             task = Task.query.filter_by(id=id).first()
             if not task:
@@ -431,8 +504,8 @@ class UpdateDeleteTask(Resource):
                 task.title = data['title']
             if 'deadline' in data:
                 task.deadline = data['deadline']
-            if 'organizer_id' in data:
-                task.organizer_id = data['organizer_id']
+           
+                task.organizer_id = current_id
             if 'completed' in data:
                 task.completed = data['completed']
             if 'event_id' in data:
@@ -462,11 +535,18 @@ class AllTask_management(Resource):
         task = [resource.serialize() for resource in Task_Assignment.query.all()]
         
         return make_response(jsonify(task))
-    
+    @jwt_required()
     def post(self):
+        current_id=get_jwt_identity()
+        
+        user=User.query.filter_by(id=current_id).first()
+        
+        if not user:
+            return {"message":"not user"}
+        
         task_id = request.get_json()['task_id'] 
         user_id = request.get_json()['user_id'] 
-        organizer_id = request.get_json()['organizer_id'] 
+        organizer_id = current_id 
         completed = request.get_json()['completed']
         
         
@@ -486,7 +566,15 @@ class AllTask_management(Resource):
         return make_response(jsonify({'message': 'Task assignment added successfully'}), 200)
  
 class UpdateTaskAssignment(Resource):
+        @jwt_required()
         def patch(self,id):
+            current_id=get_jwt_identity()
+        
+            user=User.query.filter_by(id=current_id).first()
+        
+            if not user:
+                return {"message":"not user"}
+            
             data = request.get_json()
             task_assignment = Task_Assignment.query.filter_by(id=id).first()
             if not task_assignment:
@@ -495,8 +583,8 @@ class UpdateTaskAssignment(Resource):
 
             if 'task_id' in data:
                 task_assignment.task_id = data['task_id']
-            if 'organizer_id' in data:
-                task_assignment.organizer_id = data['organizer_id']
+            
+                task_assignment.organizer_id = current_id
             if 'completed' in data:
                 task_assignment.completed = data['completed']
             if 'user_id' in data:
@@ -569,8 +657,8 @@ api.add_resource(Budgets, '/budgets')
 api.add_resource(BudgetUpdates, '/budget/<int:id>')
 api.add_resource(ExpenseUpdates, '/expense/<int:id>')
 
-with app.app_context():
-    send_task_deadline_notifications() 
+# with app.app_context():
+#     send_task_deadline_notifications() 
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True) 
