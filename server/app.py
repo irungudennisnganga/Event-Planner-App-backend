@@ -397,7 +397,7 @@ class Budgets(Resource):
         
         total = request.get_json()['total'] 
         event_id = request.get_json()['event_id'] 
-        organizer_id = request.get_json()['organizer_id'] 
+        organizer_id = current_id 
 
 
         if total is None or event_id is None or organizer_id is None:
