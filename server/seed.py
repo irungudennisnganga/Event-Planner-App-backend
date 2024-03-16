@@ -1,19 +1,14 @@
 from datetime import datetime, time
+from config import db, app, bcrypt
 from model import User, Event, Task, Budget, Rescource, Expense, Task_Assignment
-from config import db,app,bcrypt
 
-with app.app_context():  # Create an application context
-    # User.query.delete()
-    # for user in users:
-    #     db.session.delete(user)
-    # db.session.commit()
+with app.app_context():  
     password_hash = bcrypt.generate_password_hash('mypassword').decode('utf-8')
     password_hash2 = bcrypt.generate_password_hash('password').decode('utf-8')
 
-    user1 = User(username='John', email='john@example.com', first_name='Mary', last_name='Doe',_password_hash=password_hash)
-    # user1.
-    user2 = User(username='Jane', email='jane@example.com', first_name='James', last_name='Smith',_password_hash=password_hash2)
-    # user1.
+    user1 = User(username='John', email='john@example.com', first_name='Mary', last_name='Doe', _password_hash=password_hash)
+    user2 = User(username='Jane', email='jane@example.com', first_name='James', last_name='Smith', _password_hash=password_hash2)
+
     db.session.add_all([user1, user2])
     db.session.commit()
 
@@ -30,8 +25,8 @@ with app.app_context():  # Create an application context
     db.session.add_all([resource1, resource2, resource3])
     db.session.commit()
 
-    task1 = Task(title='Buy a birthday cake', deadline=time(13, 0), completed=False, user_id=user1.id, event_id=event1.id)
-    task2 = Task(title='Prepare presentation', deadline=time(9, 0), completed=False, user_id=user2.id, event_id=event2.id)
+    task1 = Task(title='Buy a birthday cake', deadline=datetime.combine(event1.date, time(13, 0)), completed=False, user_id=user1.id, event_id=event1.id)
+    task2 = Task(title='Prepare presentation', deadline=datetime.combine(event2.date, time(9, 0)), completed=False, user_id=user2.id, event_id=event2.id)
 
     db.session.add_all([task1, task2])
     db.session.commit()
@@ -48,8 +43,9 @@ with app.app_context():  # Create an application context
     db.session.add_all([expense1, expense2])
     db.session.commit()
 
-    task_assignment1 = Task_Assignment(task_id=task1.id, user_id=user1.id, deadline=time(13, 0), completed=False)
-    task_assignment2 = Task_Assignment(task_id=task2.id, user_id=user2.id, deadline=time(9, 0), completed=False)
+    task_assignment1 = Task_Assignment(task_id=task1.id, user_id=user1.id, organizer_id=user1.id, completed=False)
+    task_assignment2 = Task_Assignment(task_id=task2.id, user_id=user2.id, organizer_id=user2.id, completed=False)
+
 
     db.session.add_all([task_assignment1, task_assignment2])
     db.session.commit()
