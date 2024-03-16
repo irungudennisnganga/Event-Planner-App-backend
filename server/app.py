@@ -479,12 +479,12 @@ class AllTask(Resource):
         deadline = request.get_json()['deadline'] 
         completed = request.get_json()['completed'] 
         organizer_id = current_id
-        user_id =request.get_json()['user_id'] 
+         
         event_id = request.get_json()['event_id'] 
         
         deadline_datetime = datetime.strptime(deadline, "%Y-%m-%d")
         
-        if title is None or deadline is None or completed is None or organizer_id is None or user_id is None or event_id is None:
+        if title is None or deadline is None or completed is None or organizer_id is None or event_id is None:
             return make_response(jsonify({'errors': ['Missing required data']}), 400)
         
         new_task = Task(
@@ -492,7 +492,7 @@ class AllTask(Resource):
             deadline=deadline_datetime,
             completed=completed,
             organizer_id=organizer_id,
-            user_id=user_id,
+            
             event_id=event_id
         )
         
@@ -673,8 +673,10 @@ api.add_resource(Budgets, '/budgets')
 api.add_resource(BudgetUpdates, '/budget/<int:id>')
 api.add_resource(ExpenseUpdates, '/expense/<int:id>')
 api.add_resource(AllUsers, '/users')
+
 with app.app_context():
     send_task_deadline_notifications() 
+   
     # print(send_task_deadline_notifications()) 
 
 if __name__ == '__main__':

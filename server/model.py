@@ -18,7 +18,7 @@ class Resource(db.Model, SerializerMixin):
     name = db.Column(db.String(100), nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
     organizer_id = db.Column(db.Integer)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    # user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     event_id = db.Column(db.Integer, db.ForeignKey('events.id'), nullable=False)
 
     __table_args__ = (UniqueConstraint('name', name='unique_name'),)
@@ -30,7 +30,7 @@ class Resource(db.Model, SerializerMixin):
             'id': self.id,
             'name':self.name,
             'quantity':self.quantity,
-            'user_id':self.user_id,
+            
             'organizer_id': self.organizer_id,
             'event_id': self.event_id,
         }
@@ -51,7 +51,7 @@ class User(db.Model, SerializerMixin):
     task_assignment = db.relationship("Task_Assignment", backref='user')
     # task = db.relationship('Task', backref='user')
     expenses = db.relationship('Expense', backref='user')
-    rescources = db.relationship('Resource', backref='user') 
+    # rescources = db.relationship('Resource', backref='user') 
     
     def serialize(self):
         return {

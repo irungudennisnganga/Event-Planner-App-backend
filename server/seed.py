@@ -18,9 +18,9 @@ with app.app_context():
     db.session.add_all([event1, event2])
     db.session.commit()
 
-    resource1 = Resource(name='Table', quantity=1, user_id=user1.id, event_id=event1.id)
-    resource2 = Resource(name='Chairs', quantity=10, user_id=user1.id, event_id=event1.id)
-    resource3 = Resource(name='Laptop', quantity=1, user_id=user2.id, event_id=event2.id)
+    resource1 = Resource(name='Table', quantity=1, event_id=event1.id)
+    resource2 = Resource(name='Chairs', quantity=10,  event_id=event1.id)
+    resource3 = Resource(name='Laptop', quantity=1,  event_id=event2.id)
 
     db.session.add_all([resource1, resource2, resource3])
     db.session.commit()
