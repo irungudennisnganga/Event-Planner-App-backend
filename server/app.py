@@ -2,7 +2,7 @@ from config import app, db, api,bcrypt
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from model import User,Event,Rescource as ResourceModel ,Budget, Task, Task_Assignment, Expense
+from model import User,Event,Resource as ResourceModel ,Budget, Task, Task_Assignment, Expense
 from flask_restful import Resource
 from flask import request,jsonify,make_response,session
 from flask_jwt_extended import jwt_manager, create_access_token, get_jwt_identity, jwt_required,unset_jwt_cookies
@@ -120,7 +120,16 @@ class DeleteUser(Resource):
     
     
     # add update feature for users to update userdetails
+class AllUsers(Resource):
+    def get(self):
+        user = [n.serialize() for n in User.query.all() ] 
+            
+        response= make_response(
+            jsonify(user),
+            200
+        )
         
+        return response
 class Events(Resource):
     def get(self):
         events = [event.serialize() for event in Event.query.all()]
@@ -248,17 +257,17 @@ class AllResource(Resource):
         name = request.get_json()['name'] 
         quantity = request.get_json()['quantity'] 
         organizer_id = current_id 
-        user_id = 1 
+        
         event_id = request.get_json()['event_id'] 
         
-        if name is None or quantity is None or user_id is None or event_id is None or organizer_id is None :
+        if name is None or quantity is None or event_id is None or organizer_id is None :
             return make_response(jsonify({'errors': ['Missing required data']}), 401)
         
         new_resource =ResourceModel(
             name=name,
             quantity=quantity,
             organizer_id=organizer_id,
-            user_id=user_id,
+            
             event_id=event_id
         )
         db.session.add(new_resource)
@@ -552,17 +561,16 @@ class AllTask_management(Resource):
             return {"message":"not user"}
         
         task_id = request.get_json()['task_id'] 
-        user_id = request.get_json()['user_id'] 
+        # user_id = request.get_json()['user_id'] 
         organizer_id = current_id 
         completed = request.get_json()['completed']
         
         
-        if task_id is None or user_id is None or organizer_id is None:
+        if task_id is None or  organizer_id is None:
             return make_response(jsonify({'errors': ['Missing required data']}), 400)
         
         new_task_management=Task_Assignment(
             task_id=task_id,
-            user_id=user_id,
             organizer_id=organizer_id,
             completed=completed
         )
@@ -631,9 +639,8 @@ def send_email_notification(recipient, subject, body):
 
 def send_task_deadline_notifications():
     # Get tasks with approaching deadlines
-    approaching_deadline_tasks = Task.query.filter(Task.deadline <= datetime.now(), 
-                                       Task.deadline <= datetime.now() + timedelta(days=7)).all()
-    print(approaching_deadline_tasks)
+    approaching_deadline_tasks = Task.query.filter(Task.deadline <= datetime.now()).all()
+    # print(approaching_deadline_tasks)
     for task in approaching_deadline_tasks:
         # Get users assigned to the task
         assigned_users = [assignment.user.email for assignment in task.task_assignment]
@@ -644,8 +651,10 @@ def send_task_deadline_notifications():
         for user_email in assigned_users:
             send_email_notification(user_email, subject, body)
             
+    return assigned_users,task
             
             
+          
 # api.add_resource(LogoutResource, '/logout')
 api.add_resource(UserResource, '/login')
 api.add_resource(SignupResource, '/sign_up')
@@ -663,9 +672,10 @@ api.add_resource(Expenses, '/expenses')
 api.add_resource(Budgets, '/budgets')
 api.add_resource(BudgetUpdates, '/budget/<int:id>')
 api.add_resource(ExpenseUpdates, '/expense/<int:id>')
-
-# with app.app_context():
-#     send_task_deadline_notifications() 
+api.add_resource(AllUsers, '/users')
+with app.app_context():
+    send_task_deadline_notifications() 
+    # print(send_task_deadline_notifications()) 
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True) 
