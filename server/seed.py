@@ -1,6 +1,6 @@
 from datetime import datetime, time
 from config import db, app, bcrypt
-from model import User, Event, Task, Budget, Rescource, Expense, Task_Assignment
+from model import User, Event, Task, Budget, Resource, Expense, Task_Assignment
 
 with app.app_context():  
     password_hash = bcrypt.generate_password_hash('mypassword').decode('utf-8')
@@ -18,15 +18,15 @@ with app.app_context():
     db.session.add_all([event1, event2])
     db.session.commit()
 
-    resource1 = Rescource(name='Table', quantity=1, user_id=user1.id, event_id=event1.id)
-    resource2 = Rescource(name='Chairs', quantity=10, user_id=user1.id, event_id=event1.id)
-    resource3 = Rescource(name='Laptop', quantity=1, user_id=user2.id, event_id=event2.id)
+    resource1 = Resource(name='Table', quantity=1, user_id=user1.id, event_id=event1.id)
+    resource2 = Resource(name='Chairs', quantity=10, user_id=user1.id, event_id=event1.id)
+    resource3 = Resource(name='Laptop', quantity=1, user_id=user2.id, event_id=event2.id)
 
     db.session.add_all([resource1, resource2, resource3])
     db.session.commit()
 
-    task1 = Task(title='Buy a birthday cake', deadline=datetime.combine(event1.date, time(13, 0)), completed=False, user_id=user1.id, event_id=event1.id)
-    task2 = Task(title='Prepare presentation', deadline=datetime.combine(event2.date, time(9, 0)), completed=False, user_id=user2.id, event_id=event2.id)
+    task1 = Task(title='Buy a birthday cake', deadline=datetime.combine(event1.date, time(13, 0)), completed=False,  event_id=event1.id)
+    task2 = Task(title='Prepare presentation', deadline=datetime.combine(event2.date, time(9, 0)), completed=False, event_id=event2.id)
 
     db.session.add_all([task1, task2])
     db.session.commit()

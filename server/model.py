@@ -9,8 +9,10 @@ from datetime import datetime
 # db = SQLAlchemy()
 
 
-class Rescource(db.Model, SerializerMixin):
-    __tablename__ = 'rescources'
+from sqlalchemy import UniqueConstraint
+
+class Resource(db.Model, SerializerMixin):
+    __tablename__ = 'resources'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -31,9 +33,8 @@ class Rescource(db.Model, SerializerMixin):
             'user_id':self.user_id,
             'organizer_id': self.organizer_id,
             'event_id': self.event_id,
-            
-    }
-    
+        }
+
 class User(db.Model, SerializerMixin):
     __tablename__ = 'users'
     
@@ -48,9 +49,9 @@ class User(db.Model, SerializerMixin):
     
     event = db.relationship("Event", backref='user')
     task_assignment = db.relationship("Task_Assignment", backref='user')
-    task = db.relationship('Task', backref='user')
+    # task = db.relationship('Task', backref='user')
     expenses = db.relationship('Expense', backref='user')
-    rescources = db.relationship('Rescource', backref='user') 
+    rescources = db.relationship('Resource', backref='user') 
     
     def serialize(self):
         return {
@@ -100,8 +101,8 @@ class Event(db.Model, SerializerMixin):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
-    tasks = db.relationship("Task", backref='event')
-    resources = db.relationship('Rescource', backref='event')  # Fixed typo in resource
+    # tasks = db.relationship("Task", backref='event')
+    resources = db.relationship('Resource', backref='event')  # Fixed typo in resource
     expenses = db.relationship('Expense', backref='event')
 
     budget = db.relationship('Budget', backref='event', lazy="select", uselist=False)  
@@ -132,7 +133,7 @@ class Task(db.Model, SerializerMixin):
     deadline = db.Column(db.String)
     completed = db.Column(db.String)
     organizer_id = db.Column(db.Integer)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    # user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     event_id = db.Column(db.Integer, db.ForeignKey('events.id'))
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
@@ -154,7 +155,7 @@ class Task(db.Model, SerializerMixin):
             'title': self.title,
             'deadline': deadline_datetime.strftime('%Y-%m-%d') if deadline_datetime else None,
             'completed': self.completed,
-            'user_id': self.user_id,
+           
             'event_id': self.event_id,
             'organizer_id': self.organizer_id
         }
