@@ -23,23 +23,29 @@ def send_email(email,subject,body):
         server.starttls()
         server.login(sender_email, sender_password)
         server.sendmail(sender_email,email,message)
-class UserResource(Resource):  
+from datetime import timedelta
+
+class UserResource(Resource):
     def post(self):
         username = request.json.get('username')
         password = request.json.get('password')
         user = User.query.filter_by(username=username).first()
+        
         if not username:
             return make_response(jsonify({"message": "Missing username parameter"}), 400)
         if not user or not user.authenticate(password): 
             return {"message": "Invalid username or password"}, 401
-        access_token = create_access_token(identity=user.id)
+        
+        from datetime import timedelta
+
+        access_token = create_access_token(identity=user.id, expires_delta=timedelta(days=1))
+
         
         subject = "Welcome to Event Time!"
         html = "Thank you for signing in!"
-        email_response= send_email(user.email,subject,html)
+        email_response = send_email(user.email, subject, html)
 
-        return make_response(jsonify({'message': 'Sign in successful', 'email_response': email_response},{'token': access_token}), 200)
-        # return make_response(jsonify())
+        return make_response(jsonify({'message': 'Sign in successful', 'email_response': email_response, 'token': access_token}), 200)
 
 class SignupResource(Resource):
     
@@ -73,7 +79,10 @@ class SignupResource(Resource):
         
         send_email(email,subject,body)
         
-        access_token = create_access_token(identity=new_user.id)
+        from datetime import timedelta
+
+        access_token = create_access_token(identity=new_user.id, expires_delta=timedelta(days=1))
+
 
         return make_response(jsonify({'message': 'Sign up successful'},{'token': access_token}), 200)
 
@@ -561,17 +570,18 @@ class AllTask_management(Resource):
             return {"message":"not user"}
         
         task_id = request.get_json()['task_id'] 
-        # user_id = request.get_json()['user_id'] 
+        user_id = request.get_json()['user_id'] 
         organizer_id = current_id 
         completed = request.get_json()['completed']
         
         
-        if task_id is None or  organizer_id is None:
+        if task_id is None or user_id is None  or organizer_id is None:
             return make_response(jsonify({'errors': ['Missing required data']}), 400)
         
         new_task_management=Task_Assignment(
             task_id=task_id,
             organizer_id=organizer_id,
+            user_id=user_id,
             completed=completed
         )
         
@@ -639,7 +649,7 @@ def send_email_notification(recipient, subject, body):
 
 def send_task_deadline_notifications():
     # Get tasks with approaching deadlines
-    approaching_deadline_tasks = Task.query.filter(Task.deadline <= datetime.now()).all()
+    approaching_deadline_tasks = Task.query.filter(Task.deadline <= datetime.now(), Task.completed == False).all()
     # print(approaching_deadline_tasks)
     for task in approaching_deadline_tasks:
         # Get users assigned to the task
@@ -681,5 +691,6 @@ with app.app_context():
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True) 
+    
      
         
