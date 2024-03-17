@@ -141,10 +141,10 @@ class Task(db.Model, SerializerMixin):
     task_assignment = db.relationship('Task_Assignment', backref='task')
     
     def serialize(self):
-        deadline_str = str(self.deadline)
         deadline_datetime = None
         if self.deadline:
             try:
+                deadline_str = str(self.deadline)
                 deadline_datetime = datetime.strptime(deadline_str, '%Y-%m-%d')
             except ValueError:
                 # Handle invalid date format gracefully
@@ -155,10 +155,10 @@ class Task(db.Model, SerializerMixin):
             'title': self.title,
             'deadline': deadline_datetime.strftime('%Y-%m-%d') if deadline_datetime else None,
             'completed': self.completed,
-           
             'event_id': self.event_id,
             'organizer_id': self.organizer_id
         }
+
 
 class Task_Assignment(db.Model, SerializerMixin):
     __tablename__ ='task_assignments'
