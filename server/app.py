@@ -508,7 +508,7 @@ class AllTask(Resource):
         
         new_task = Task(
             title=title,
-            deadline=deadline_datetime,
+            deadline=deadline,
             completed=completed,
             organizer_id=organizer_id,
             
@@ -661,6 +661,7 @@ def send_task_deadline_notifications():
     # Get tasks with approaching deadlines
     approaching_deadline = datetime.now() + timedelta(days=7)
     approaching_deadline_tasks = Task_Assignment.query.filter(Task_Assignment.task.has(Task.deadline >= datetime.now()),Task_Assignment.task.has(Task.deadline <= approaching_deadline)).all()    # print(approaching_deadline_tasks)
+    # print(approaching_deadline_tasks)
     for assignment in approaching_deadline_tasks:
         task = assignment.task
         name_user = assignment.user.first_name
@@ -695,13 +696,13 @@ api.add_resource(ExpenseUpdates, '/expense/<int:id>')
 api.add_resource(AllUsers, '/users')
 
  
-   
+with app.app_context():
+        send_task_deadline_notifications()
     # print(send_task_deadline_notifications()) 
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True) 
-    with app.app_context():
-        send_task_deadline_notifications()
+   
     
      
         

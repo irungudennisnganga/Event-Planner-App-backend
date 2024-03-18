@@ -18,27 +18,27 @@ with app.app_context():
     db.session.add_all([event1, event2])
     db.session.commit()
 
-    resource1 = Resource(name='Table', quantity=1, event_id=event1.id)
-    resource2 = Resource(name='Chairs', quantity=10,  event_id=event1.id)
-    resource3 = Resource(name='Laptop', quantity=1,  event_id=event2.id)
+    resource1 = Resource(name='Table', quantity=1, event_id=event1.id,organizer_id =user1.id)
+    resource2 = Resource(name='Chairs', quantity=10,  event_id=event1.id, organizer_id =user1.id)
+    resource3 = Resource(name='Laptop', quantity=1,  event_id=event2.id, organizer_id =user2.id)
 
     db.session.add_all([resource1, resource2, resource3])
     db.session.commit()
 
-    task1 = Task(title='Buy a birthday cake', deadline=datetime.combine(event1.date, time(13, 0)), completed=False,  event_id=event1.id)
-    task2 = Task(title='Prepare presentation', deadline=datetime.combine(event2.date, time(9, 0)), completed=False, event_id=event2.id)
+    task1 = Task(title='Buy a birthday cake', deadline=datetime.combine(event1.date, time(13, 0)), completed=False,  event_id=event1.id,organizer_id =user1.id)
+    task2 = Task(title='Prepare presentation', deadline=datetime.combine(event2.date, time(9, 0)), completed=False, event_id=event2.id,organizer_id =user2.id)
 
     db.session.add_all([task1, task2])
     db.session.commit()
 
-    budget1 = Budget(total=500, event_id=event1.id)
-    budget2 = Budget(total=2000, event_id=event2.id)
+    budget1 = Budget(total=500, event_id=event1.id,organizer_id =user1.id)
+    budget2 = Budget(total=2000, event_id=event2.id,organizer_id =user2.id)
 
     db.session.add_all([budget1, budget2])
     db.session.commit()
 
-    expense1 = Expense(description='Birthday Cake', amount=100, user_id=user1.id, event_id=event1.id)
-    expense2 = Expense(description='Catering', amount=500, user_id=user2.id, event_id=event2.id)
+    expense1 = Expense(description='Birthday Cake', amount=100, user_id=user1.id, event_id=event1.id,organizer_id =user1.id)
+    expense2 = Expense(description='Catering', amount=500, user_id=user2.id, event_id=event2.id,organizer_id =user2.id)
 
     db.session.add_all([expense1, expense2])
     db.session.commit()
