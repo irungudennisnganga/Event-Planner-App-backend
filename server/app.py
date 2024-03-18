@@ -130,6 +130,7 @@ class DeleteUser(Resource):
     
     # add update feature for users to update userdetails
 class AllUsers(Resource):
+    
     def get(self):
         user = [n.serialize() for n in User.query.all() ] 
             
@@ -237,13 +238,22 @@ class EventHandler(Resource):
         
     def delete(self, id):
         event = Event.query.filter_by(id=id).first()
+        budget =Budget.query.filter_by(event_id =id).delete()
+        expense =Expense.query.filter_by(event_id = id).delete()
         
         if not event:
             return make_response(jsonify({'message': 'No Event'}), 404)
 
-        # Ensure to delete associated resources before deleting the event
+           
+        # for budget in event.budget:
+        #     db.session.delete(budget)
+
+        
         for resource in event.resources:
             db.session.delete(resource)
+            
+        for expenses in event.expenses:
+            db.session.delete(expenses)
 
         db.session.delete(event)
         db.session.commit()
