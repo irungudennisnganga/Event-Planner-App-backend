@@ -659,20 +659,20 @@ def send_email_notification(recipient, subject, body):
 
 def send_task_deadline_notifications():
     # Get tasks with approaching deadlines
-    approaching_deadline_tasks = Task.query.filter(Task.deadline <= datetime.now(), Task.completed == False).all()
-    # print(approaching_deadline_tasks)
-    for task in approaching_deadline_tasks:
-        # Get users assigned to the task
-        assigned_users = [assignment.user.email for assignment in task.task_assignment]
+    approaching_deadline = datetime.now() + timedelta(days=7)
+    approaching_deadline_tasks = Task_Assignment.query.filter(Task_Assignment.task.has(Task.deadline >= datetime.now()),Task_Assignment.task.has(Task.deadline <= approaching_deadline)).all()    # print(approaching_deadline_tasks)
+    for assignment in approaching_deadline_tasks:
+        task = assignment.task
+        name_user = assignment.user.first_name
+        name_email = assignment.user.email
+
+        
         # Prepare email content
         subject = f'Upcoming Deadline: {task.title}'
-        body = f'Dear User,\n\nThis is a reminder that the deadline for the task "{task.title}" is approaching. Please make sure to complete it on time that is {task.deadline}.\n\nBest regards,\nThe Event Planner Team'
-        # Send email notifications to assigned users
-        for user_email in assigned_users:
-            send_email_notification(user_email, subject, body)
-            
-    return assigned_users,task
-            
+        body = f'Dear {name_user},\n\nThis is a reminder that the deadline for the task "{task.title}" is approaching. Please make sure to complete it on time by {task.deadline}.\n\nBest regards,\nThe Event Planner Team'
+        
+        # Send email notification to the assigned user
+        send_email_notification(name_email, subject, body)
             
           
 # api.add_resource(LogoutResource, '/logout')
@@ -694,13 +694,14 @@ api.add_resource(BudgetUpdates, '/budget/<int:id>')
 api.add_resource(ExpenseUpdates, '/expense/<int:id>')
 api.add_resource(AllUsers, '/users')
 
-with app.app_context():
-    send_task_deadline_notifications() 
+ 
    
     # print(send_task_deadline_notifications()) 
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True) 
+    with app.app_context():
+        send_task_deadline_notifications()
     
      
         

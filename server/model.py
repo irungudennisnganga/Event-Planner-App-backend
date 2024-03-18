@@ -48,7 +48,7 @@ class User(db.Model, SerializerMixin):
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
     
     event = db.relationship("Event", backref='user')
-    task_assignment = db.relationship("Task_Assignment", backref='user')
+    # task_assignment = db.relationship("Task_Assignment", backref='user')
     # task = db.relationship('Task', backref='user')
     expenses = db.relationship('Expense', backref='user')
     # rescources = db.relationship('Resource', backref='user') 
@@ -169,6 +169,7 @@ class Task_Assignment(db.Model, SerializerMixin):
     organizer_id = db.Column(db.Integer)
 
     completed = db.Column(db.Boolean, default=False)
+    user = db.relationship('User', backref='task_assignments')
     
     def serialize(self):
         return {
