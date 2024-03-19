@@ -7,6 +7,7 @@ from flask_restful import Resource
 from flask import request,jsonify,make_response,session
 from flask_jwt_extended import jwt_manager, create_access_token, get_jwt_identity, jwt_required,unset_jwt_cookies
 from datetime import datetime,timedelta
+from sqlalchemy import func
 
 def send_email(email,subject,body):
     
@@ -238,8 +239,11 @@ class EventHandler(Resource):
         
     def delete(self, id):
         event = Event.query.filter_by(id=id).first()
-        budget =Budget.query.filter_by(event_id =id).delete()
-        expense =Expense.query.filter_by(event_id = id).delete()
+        budget =Budget.query.filter_by(event_id =id).all()
+        expense =Expense.query.filter_by(event_id = id).all()
+        resource =ResourceModel.query.filter_by(event_id = id).all()
+        task =Task.query.filter_by(event_id = id).all()
+        
         
         if not event:
             return make_response(jsonify({'message': 'No Event'}), 404)
@@ -249,11 +253,18 @@ class EventHandler(Resource):
         #     db.session.delete(budget)
 
         
-        for resource in event.resources:
-            db.session.delete(resource)
+        for n in resource:
+            db.session.delete(n)
             
-        for expenses in event.expenses:
-            db.session.delete(expenses)
+        for n in expense:
+            db.session.delete(n)
+        for n in budget:
+            db.session.delete(n)
+        for n in task:
+            taskassign =Task_Assignment.query.filter_by(task_id=n.id).all()
+            for x in taskassign:
+                db.session.delete(x)
+            db.session.delete(n)    
 
         db.session.delete(event)
         db.session.commit()
@@ -338,75 +349,95 @@ class UpdateResource(Resource):
 
 class Expenses(Resource):
     def get(self):
-        
         return make_response(jsonify([expense.serialize() for expense in Expense.query.all()]))
 
     @jwt_required()
     def post(self):
-        current_id=get_jwt_identity()
-        
-        user=User.query.filter_by(id=current_id).first()
+        current_id = get_jwt_identity()
+        user = User.query.filter_by(id=current_id).first()
+
         if not user:
-            return {"message":"not user"}
-            
+            return {"message": "User not found"}
+
         data = request.json
+
         if not data:
             return make_response(jsonify({'message': 'No input data provided'}), 400)
 
-        new_expense = Expense(
-            description=data.get('description'),
-            amount=data.get('amount'),
-            user_id=data.get('user_id'),
-            event_id=data.get('event_id'),
-            organizer_id=current_id
-        )
+        event_id = data.get('event_id')
 
-        db.session.add(new_expense)
-        db.session.commit()
+        if not event_id:
+            return make_response(jsonify({'message': 'Event ID is required'}), 400)
 
-        return make_response(jsonify({'message': 'Expense created successfully'}), 201)
+        expense_total = sum(expense.amount for expense in Expense.query.filter_by(event_id=event_id))
+
+        budget = Budget.query.filter_by(event_id=event_id).first()
+
+        if not budget:
+            return make_response(jsonify({'message': 'No budget provided for this event'}), 400)
+
+        if expense_total + data.get('amount', 0) <= budget.total:
+            new_expense = Expense(
+                description=data.get('description'),
+                amount=data.get('amount'),
+                user_id=current_id,
+                event_id=event_id,
+                organizer_id=current_id
+            )
+
+            db.session.add(new_expense)
+            db.session.commit()
+
+            return make_response(jsonify({'message': 'Expense created successfully'}), 201)
+
+        return make_response(jsonify({'message': 'Expense exceeds budget limit'}), 400)
 
 class ExpenseUpdates(Resource):
     @jwt_required()
-    def patch(self,id):
-        current_id=get_jwt_identity()
-        
-        user=User.query.filter_by(id=current_id).first()
+    def patch(self, id):
+        current_id = get_jwt_identity()
+        user = User.query.filter_by(id=current_id).first()
         if not user:
-            return {"message":"not user"}
-        
+            return {"message": "User not found"}
+
         data = request.get_json()
         expense = Expense.query.filter_by(id=id).first()
         if not expense:
             return make_response(jsonify({'message': 'Expense not found'}), 404)
 
+        # Check if the event_id provided matches the budget and the total expense
+        budget = Budget.query.filter_by(event_id=expense.event_id).first()
+        total_expense = Expense.query.filter_by(event_id=expense.event_id).with_entities(func.sum(Expense.amount)).scalar()
 
-        if 'event_id' in data:
-            expense.event_id = data['event_id']
-        
-            expense.organizer_id = current_id
+        if total_expense is None:
+            total_expense = 0
+
         if 'amount' in data:
-            expense.total = data['amount']
+            new_amount = data['amount']
+            if budget and total_expense + new_amount - expense.amount > budget.total:
+                return make_response(jsonify({'message': 'Expense amount exceeds budget limit'}), 400)
+            expense.amount = new_amount
+
         if 'description' in data:
             expense.description = data['description']
-            
+
         if 'user_id' in data:
             expense.user_id = data['user_id']
-        
-        db.session.commit()
-        
-        return make_response(jsonify({'message': 'Expense updated successfully'}), 200)   
-    
-    def delete(self,id):
-            expense = Expense.query.filter_by(id=id).first()
-            if not expense:
-                return make_response(jsonify({'message': 'No expense'}), 200) 
-                
 
-            db.session.delete(expense)
-            db.session.commit()
-            
-            return make_response(jsonify({'message': 'Expense deleted successfully'}), 200)             
+        expense.organizer_id = current_id
+        db.session.commit()
+
+        return make_response(jsonify({'message': 'Expense updated successfully'}), 200)
+
+    def delete(self, id):
+        expense = Expense.query.filter_by(id=id).first()
+        if not expense:
+            return make_response(jsonify({'message': 'Expense not found'}), 404)
+
+        db.session.delete(expense)
+        db.session.commit()
+
+        return make_response(jsonify({'message': 'Expense deleted successfully'}), 200)
 
 
 class Budgets(Resource):
@@ -696,8 +727,8 @@ api.add_resource(ExpenseUpdates, '/expense/<int:id>')
 api.add_resource(AllUsers, '/users')
 
  
-with app.app_context():
-        send_task_deadline_notifications()
+# with app.app_context():
+#         send_task_deadline_notifications()
     # print(send_task_deadline_notifications()) 
 
 if __name__ == '__main__':
