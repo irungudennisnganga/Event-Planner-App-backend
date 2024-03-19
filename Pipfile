@@ -17,6 +17,8 @@ flask-bcrypt = "*"
 python-dotenv = "*"
 secure-smtplib = "*"
 pyjwt = "*"
+gunicorn = "*"
+psycopg2-binary = "*"
 
 [dev-packages]
 
