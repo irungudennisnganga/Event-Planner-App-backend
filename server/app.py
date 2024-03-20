@@ -727,8 +727,8 @@ api.add_resource(ExpenseUpdates, '/expense/<int:id>')
 api.add_resource(AllUsers, '/users')
 
  
-# with app.app_context():
-#         send_task_deadline_notifications()
+with app.app_context():
+        send_task_deadline_notifications()
     # print(send_task_deadline_notifications()) 
 
 if __name__ == '__main__':
