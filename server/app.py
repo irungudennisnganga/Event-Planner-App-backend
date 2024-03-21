@@ -105,30 +105,51 @@ class CheckSession(Resource):
         
         return make_response(jsonify(user_data), 200)
             
-     
- 
 class DeleteUser(Resource):
     @jwt_required()
     def delete(self):
-        # data = request.json
-        # username = data.get('username')
         user_id = get_jwt_identity()
-        user=User.query.filter_by(id=user_id).first()
         
-        if not user :
+        user = User.query.filter_by(id=user_id).first()
+        if not user:
             return make_response(jsonify({'message': 'No user found'}), 400)
         
-        subject = "Exited Event Time!"
-        html = "Thank you for using our services. User deleted successfuly"
-        email_response = send_email( user.email,subject, html)
+        events = Event.query.filter_by(organizer_id=user_id).all()
+        budgets = Budget.query.filter_by(organizer_id=user_id).all()
+        expenses = Expense.query.filter_by(organizer_id=user_id).all()
+        resources = ResourceModel.query.filter_by(organizer_id=user_id).all()
+        tasks = Task.query.filter_by(organizer_id=user_id).all()
+        task_assignment = Task_Assignment.query.filter_by(organizer_id=user_id).all()
 
-        # return make_response(jsonify(), 200)
+        subject = "Exited Event Time!"
+        html = "Thank you for using our services. User deleted successfully"
+        email_response = send_email(user.email, subject, html)
+        
+        for event in events:
+            if event.organizer_id:
+                db.session.delete(event)
+        
+        for budget in budgets:
+            db.session.delete(budget)    
+
+        for expense in expenses:
+            if expense.user_id:
+                db.session.delete(expense)
+        
+        for resource in resources:
+            db.session.delete(resource) 
+        
+        for task in tasks:
+            db.session.delete(task)  
+        
+        for task_assignment in task_assignment:
+            db.session.delete(task_assignment)  
+
         db.session.delete(user)
         db.session.commit()
         
-        return make_response(jsonify({"message":"Deleted successfuly"},{'message': 'User deletion successful'}), 200)
-    
-    
+        return make_response(jsonify({"message": "Deleted successfully"}), 200)
+
     # add update feature for users to update userdetails
 class AllUsers(Resource):
     
@@ -239,37 +260,44 @@ class EventHandler(Resource):
         
     def delete(self, id):
         event = Event.query.filter_by(id=id).first()
-        budget =Budget.query.filter_by(event_id =id).all()
-        expense =Expense.query.filter_by(event_id = id).all()
-        resource =ResourceModel.query.filter_by(event_id = id).all()
-        task =Task.query.filter_by(event_id = id).all()
-        
-        
+
         if not event:
             return make_response(jsonify({'message': 'No Event'}), 404)
 
-           
-        # for budget in event.budget:
-        #     db.session.delete(budget)
+        try:
+            # Delete related objects
+            if event.budget:
+                for budget in event.budget:
+                    db.session.delete(budget)
+            if event.expenses:
+                for expense in event.expenses:
+                    db.session.delete(expense)
+            if event.resources:
+                for resource in event.resources:
+                    db.session.delete(resource)
+            if event.tasks:
+                for task in event.tasks:
+                    # Delete related task assignments first
+                    task_assignments = Task_Assignment.query.filter_by(task_id=task.id).all()
+                    if task_assignments:
+                        for task_assignment in task_assignments:
+                            db.session.delete(task_assignment)
+                    db.session.delete(task)
 
-        
-        for n in resource:
-            db.session.delete(n)
+            # Commit all deletions
+            db.session.commit()
             
-        for n in expense:
-            db.session.delete(n)
-        for n in budget:
-            db.session.delete(n)
-        for n in task:
-            taskassign =Task_Assignment.query.filter_by(task_id=n.id).all()
-            for x in taskassign:
-                db.session.delete(x)
-            db.session.delete(n)    
+            # Finally, delete the event itself
+            db.session.delete(event)
+            db.session.commit()
 
-        db.session.delete(event)
-        db.session.commit()
-        
-        return make_response(jsonify({'message': 'Event deleted successfully'}), 200)
+            return make_response(jsonify({'message': 'Event deleted successfully'}), 200)
+
+        except Exception as e:
+            # If any exception occurs during the deletion process, rollback changes
+            db.session.rollback()
+            return make_response(jsonify({'error': str(e)}), 500)
+
 class AllResource(Resource):
     def get(self):
         resources = [resource.serialize() for resource in ResourceModel.query.all()]  
@@ -628,6 +656,7 @@ class AllTask_management(Resource):
         
         db.session.add(new_task_management)
         db.session.commit()
+        send_task_deadline_notifications()
         
         return make_response(jsonify({'message': 'Task assignment added successfully'}), 200)
  
@@ -732,6 +761,8 @@ with app.app_context():
     # print(send_task_deadline_notifications()) 
 
 if __name__ == '__main__':
+    # with app.app_context():
+    #     send_task_deadline_notifications()
     app.run(port=5555, debug=True) 
    
     
