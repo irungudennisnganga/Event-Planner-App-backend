@@ -101,7 +101,7 @@ class Event(db.Model, SerializerMixin):
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
 
-    # tasks = db.relationship("Task", backref='event')
+    tasks = db.relationship("Task", backref='event')
     resources = db.relationship('Resource', backref='event')  # Fixed typo in resource
     expenses = db.relationship('Expense', backref='event')
 
